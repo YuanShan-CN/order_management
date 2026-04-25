@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>店铺维护 - 摄影订单管理系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 0; background: #f5f5f5; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { font-size: 24px; font-weight: 400; }
+        .header a { color: white; text-decoration: none; background: rgba(255,255,255,0.2); padding: 8px 20px; border-radius: 20px; font-size: 14px; }
+        .header a:hover { background: rgba(255,255,255,0.3); }
+        .container { max-width: 800px; margin: 0 auto; padding: 30px; }
+        .form-container { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 30px; }
+        .form-row { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 15px; }
+        .form-group { flex: 1; min-width: 200px; }
+        label { display: block; margin-bottom: 5px; font-weight: 500; color: #555; }
+        input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+        .btn { padding: 10px 25px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500; }
+        .btn-primary { background: #4CAF50; color: white; }
+        .btn-primary:hover { background: #45a049; }
+        .btn-danger { background: #f44336; color: white; }
+        .btn-danger:hover { background: #d32f2f; }
+        .btn-edit { background: #2196F3; color: white; }
+        .btn-edit:hover { background: #1976D2; }
+        .btn-save { background: #FF9800; color: white; }
+        .btn-save:hover { background: #F57C00; }
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; font-weight: 600; color: #333; }
+        tr:hover { background: #f9f9f9; }
+        .actions { display: flex; gap: 8px; }
+        .empty-state { text-align: center; padding: 50px; color: #999; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: white; padding: 30px; border-radius: 8px; width: 90%; max-width: 400px; position: relative; }
+        .close-modal { position: absolute; top: 10px; right: 15px; font-size: 24px; cursor: pointer; color: #999; }
+        .close-modal:hover { color: #333; }
+        .shop-count { text-align: right; margin-bottom: 15px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏪 店铺维护</h1>
+        <a href="/">返回首页</a>
+    </div>
+
+    <div class="container">
+        <div class="shop-count">
+            店铺总数: <span id="shopCount">0</span>
+        </div>
+
+        <div class="form-container">
+            <h3>添加新店铺</h3>
+            <form id="shopForm">
+                <div class="form-row">
+                    <div class="form-group" style="flex: 2;">
+                        <label>店铺名称</label>
+                        <input type="text" id="shopName" placeholder="输入店铺名称" required>
+                    </div>
+                    <div class="form-group" style="flex: 1; display: flex; align-items: flex-end;">
+                        <button type="submit" class="btn btn-primary">添加店铺</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>店铺名称</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="shopTable">
+                <tr><td colspan="3" class="empty-state">暂无店铺数据</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="modal" id="editModal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal()">&times;</span>
+            <h3>编辑店铺</h3>
+            <form id="editForm">
+                <input type="hidden" id="editId">
+                <div class="form-group">
+                    <label>店铺名称</label>
+                    <input type="text" id="editName" required>
+                </div>
+                <button type="submit" class="btn btn-save">保存修改</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/api/shops';
+        let editingId = null;
+
+        async function loadShops() {
+            const response = await fetch(API_URL);
+            const shops = await response.json();
+            renderShops(shops);
+            updateCount(shops);
+        }
+
+        function renderShops(shops) {
+            const table = document.getElementById('shopTable');
+            if (shops.length === 0) {
+                table.innerHTML = '<tr><td colspan="3" class="empty-state">暂无店铺数据</td></tr>';
+                return;
+            }
+            table.innerHTML = shops.map(shop => `
+                <tr>
+                    <td>${shop.ID}</td>
+                    <td>${shop.name}</td>
+                    <td class="actions">
+                        <button class="btn btn-edit" onclick="openEditModal(${shop.ID}, '${shop.name}')">编辑</button>
+                        <button class="btn btn-danger" onclick="deleteShop(${shop.ID})">删除</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function updateCount(shops) {
+            document.getElementById('shopCount').textContent = shops.length;
+        }
+
+        document.getElementById('shopForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('shopName').value.trim();
+            if (!name) {
+                alert('请输入店铺名称');
+                return;
+            }
+            await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            });
+            loadShops();
+            document.getElementById('shopForm').reset();
+        });
+
+        function openEditModal(id, name) {
+            editingId = id;
+            document.getElementById('editId').value = id;
+            document.getElementById('editName').value = name;
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('editModal').style.display = 'none';
+            editingId = null;
+        }
+
+        document.getElementById('editForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('editName').value.trim();
+            if (!name) {
+                alert('请输入店铺名称');
+                return;
+            }
+            await fetch(`${API_URL}/${editingId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            });
+            closeModal();
+            loadShops();
+        });
+
+        async function deleteShop(id) {
+            if (confirm('确定要删除这个店铺吗？')) {
+                await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+                loadShops();
+            }
+        }
+
+        document.querySelector('.close-modal').addEventListener('click', closeModal);
+        window.addEventListener('click', (e) => {
+            if (e.target === document.getElementById('editModal')) closeModal();
+        });
+
+        document.addEventListener('DOMContentLoaded', loadShops);
+    </script>
+</body>
+</html>
