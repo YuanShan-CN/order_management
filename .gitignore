@@ -13,7 +13,6 @@ config.json
 order_management
 
 # Go 模块缓存
-go.sum
 vendor/
 
 # 日志文件
