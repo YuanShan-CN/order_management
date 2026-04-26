@@ -24,6 +24,13 @@ func (Order) TableName() string {
 	return "orders"
 }
 
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Println("Usage: go run import_csv.go <csv_file_path>")
@@ -32,7 +39,18 @@ func main() {
 
 	csvPath := os.Args[1]
 
-	dsn := "root:123456@tcp(127.0.0.1:3307)/order_management?charset=utf8mb4&parseTime=True&loc=Local"
+	dbHost := getEnv("DB_HOST", "127.0.0.1")
+	dbPort := getEnv("DB_PORT", "3307")
+	dbUser := getEnv("DB_USER", "root")
+	dbPassword := getEnv("DB_PASSWORD", "")
+	dbName := getEnv("DB_NAME", "order_management")
+
+	if dbPassword == "" {
+		fmt.Println("Error: DB_PASSWORD environment variable is not set")
+		return
+	}
+
+	dsn := dbUser + ":" + dbPassword + "@tcp(" + dbHost + ":" + dbPort + ")/" + dbName + "?charset=utf8mb4&parseTime=True&loc=Local"
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		fmt.Printf("Failed to connect database: %v\n", err)
