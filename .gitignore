@@ -8,6 +8,7 @@ config.json
 *.out
 *.o
 *.a
+order_management
 
 # Go 模块缓存
 go.sum
