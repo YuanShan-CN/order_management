@@ -60,6 +60,27 @@
         .search-bar { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
         .search-input { flex: 1; min-width: 200px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
         .filter-select { padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        
+        .date-picker-container { position: relative; }
+        .date-picker-input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+        .date-picker-calendar { display: none; position: absolute; top: 100%; left: 0; margin-top: 5px; background: white; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); z-index: 1000; min-width: 280px; }
+        .date-picker-calendar.show { display: block; }
+        .date-picker-header { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #eee; }
+        .date-picker-nav { background: none; border: none; font-size: 20px; cursor: pointer; color: #667eea; padding: 5px 10px; }
+        .date-picker-nav:hover { background: #f5f5f5; border-radius: 4px; }
+        .date-picker-month-year { font-weight: 600; color: #333; }
+        .date-picker-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); padding: 8px 0; background: #f8f9fa; }
+        .date-picker-weekday { text-align: center; padding: 8px; font-size: 12px; color: #666; }
+        .date-picker-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; padding: 8px; }
+        .date-picker-day { text-align: center; padding: 10px; cursor: pointer; border-radius: 4px; font-size: 14px; }
+        .date-picker-day:hover { background: #e8eaf6; }
+        .date-picker-day.today { background: #667eea; color: white; }
+        .date-picker-day.selected { background: #764ba2; color: white; }
+        .date-picker-day.other-month { color: #ccc; }
+        .date-picker-footer { display: flex; justify-content: space-between; padding: 8px 12px; border-top: 1px solid #eee; }
+        .date-picker-btn { background: none; border: none; color: #667eea; cursor: pointer; font-size: 13px; }
+        .date-picker-btn:hover { text-decoration: underline; }
+        .date-picker-clear { color: #999; }
     </style>
 </head>
 <body>
@@ -92,7 +113,7 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label>日期</label>
-                            <input type="date" id="date" required>
+                            <input type="text" id="date" required placeholder="YYYY-MM-DD">
                         </div>
                         <div class="form-group">
                             <label>地点</label>
@@ -189,7 +210,7 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label>日期</label>
-                        <input type="date" id="editDate" required>
+                        <input type="text" id="editDate" required placeholder="YYYY-MM-DD">
                     </div>
                     <div class="form-group">
                         <label>地点</label>
@@ -426,10 +447,160 @@
             if (e.target === document.getElementById('editModal')) closeModal();
         });
 
+        function createDatePicker(inputId) {
+            const input = document.getElementById(inputId);
+            if (!input) return;
+            
+            const container = document.createElement('div');
+            container.className = 'date-picker-container';
+            input.parentNode.insertBefore(container, input);
+            input.className = 'date-picker-input';
+            container.appendChild(input);
+            
+            const calendar = document.createElement('div');
+            calendar.className = 'date-picker-calendar';
+            container.appendChild(calendar);
+            
+            const weekdays = ['一', '二', '三', '四', '五', '六', '日'];
+            const months = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
+            
+            let currentDate = new Date();
+            let selectedDate = input.value ? new Date(input.value) : null;
+            
+            function renderCalendar() {
+                const year = currentDate.getFullYear();
+                const month = currentDate.getMonth();
+                
+                const firstDay = new Date(year, month, 1);
+                const lastDay = new Date(year, month + 1, 0);
+                
+                const firstDayOffset = firstDay.getDay();
+                const adjustedOffset = firstDayOffset === 0 ? 6 : firstDayOffset - 1;
+                
+                let html = `
+                    <div class="date-picker-header">
+                        <button class="date-picker-nav prev-month-btn">◀</button>
+                        <span class="date-picker-month-year">${year}年${months[month]}</span>
+                        <button class="date-picker-nav next-month-btn">▶</button>
+                    </div>
+                    <div class="date-picker-weekdays">
+                        ${weekdays.map(day => `<div class="date-picker-weekday">${day}</div>`).join('')}
+                    </div>
+                    <div class="date-picker-days">
+                `;
+                
+                const prevMonthLastDay = new Date(year, month, 0).getDate();
+                for (let i = adjustedOffset - 1; i >= 0; i--) {
+                    const day = prevMonthLastDay - i;
+                    html += `<div class="date-picker-day other-month" data-year="${year}" data-month="${month - 1}" data-day="${day}">${day}</div>`;
+                }
+                
+                for (let day = 1; day <= lastDay.getDate(); day++) {
+                    const dateObj = new Date(year, month, day);
+                    const isToday = isSameDay(dateObj, new Date());
+                    const isSelected = selectedDate && isSameDay(dateObj, selectedDate);
+                    let className = 'date-picker-day';
+                    if (isToday) className += ' today';
+                    if (isSelected) className += ' selected';
+                    html += `<div class="${className}" data-year="${year}" data-month="${month}" data-day="${day}">${day}</div>`;
+                }
+                
+                const remainingDays = 42 - (adjustedOffset + lastDay.getDate());
+                for (let day = 1; day <= remainingDays; day++) {
+                    html += `<div class="date-picker-day other-month" data-year="${year}" data-month="${month + 1}" data-day="${day}">${day}</div>`;
+                }
+                
+                html += `
+                    </div>
+                    <div class="date-picker-footer">
+                        <button class="date-picker-btn date-picker-clear-btn">清除</button>
+                        <button class="date-picker-btn date-picker-today-btn">今天</button>
+                    </div>
+                `;
+                
+                calendar.innerHTML = html;
+                
+                calendar.querySelector('.prev-month-btn').addEventListener('click', prevMonth);
+                calendar.querySelector('.next-month-btn').addEventListener('click', nextMonth);
+                calendar.querySelector('.date-picker-clear-btn').addEventListener('click', clearDate);
+                calendar.querySelector('.date-picker-today-btn').addEventListener('click', selectToday);
+                
+                calendar.querySelectorAll('.date-picker-day').forEach(dayEl => {
+                    dayEl.addEventListener('click', function() {
+                        const year = parseInt(this.dataset.year);
+                        const month = parseInt(this.dataset.month);
+                        const day = parseInt(this.dataset.day);
+                        selectDate(year, month, day);
+                    });
+                });
+            }
+            
+            function isSameDay(date1, date2) {
+                return date1.getFullYear() === date2.getFullYear() &&
+                       date1.getMonth() === date2.getMonth() &&
+                       date1.getDate() === date2.getDate();
+            }
+            
+            function prevMonth() {
+                currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+                renderCalendar();
+            }
+            
+            function nextMonth() {
+                currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
+                renderCalendar();
+            }
+            
+            function selectDate(year, month, day) {
+                selectedDate = new Date(year, month, day);
+                const dateStr = selectedDate.toISOString().split('T')[0];
+                input.value = dateStr;
+                calendar.classList.remove('show');
+                input.dispatchEvent(new Event('change'));
+            }
+            
+            function selectToday() {
+                currentDate = new Date();
+                selectedDate = new Date();
+                const dateStr = selectedDate.toISOString().split('T')[0];
+                input.value = dateStr;
+                calendar.classList.remove('show');
+                input.dispatchEvent(new Event('change'));
+            }
+            
+            function clearDate() {
+                input.value = '';
+                selectedDate = null;
+                calendar.classList.remove('show');
+                input.dispatchEvent(new Event('change'));
+            }
+            
+            input.addEventListener('focus', () => {
+                if (input.value) {
+                    currentDate = new Date(input.value);
+                } else {
+                    currentDate = new Date();
+                }
+                selectedDate = input.value ? new Date(input.value) : null;
+                renderCalendar();
+                calendar.classList.add('show');
+            });
+            
+            document.addEventListener('click', (e) => {
+                if (!container.contains(e.target)) {
+                    calendar.classList.remove('show');
+                }
+            });
+            
+            renderCalendar();
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             populateYearFilter();
             loadShops();
             loadOrders();
+            createDatePicker('date');
+            createDatePicker('editDate');
         });
     </script>
 </body>
