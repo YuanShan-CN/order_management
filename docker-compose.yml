@@ -1,0 +1,37 @@
+services:
+  app:
+    build: .
+    container_name: order_management_app
+    ports:
+      - "8081:8080"
+    depends_on:
+      - db
+    environment:
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+    volumes:
+      - ./config.yaml:/app/config.yaml
+    networks:
+      - order_management_network
+    restart: unless-stopped
+
+  db:
+    image: mariadb:11.5
+    container_name: order_management_db
+    ports:
+      - "3307:3306"
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${DB_NAME}
+    volumes:
+      - ~/code/docker/order_management/mariadb_data:/var/lib/mysql
+    networks:
+      - order_management_network
+    restart: unless-stopped
+
+networks:
+  order_management_network:
+    driver: bridge
