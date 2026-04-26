@@ -2,6 +2,8 @@
 config.yaml
 config.yml
 config.json
+.env
+.env.local
 
 # 编译产物
 *.exe
