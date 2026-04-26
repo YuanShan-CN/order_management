@@ -3,37 +3,45 @@ package database
 import (
 	"log"
 	"os"
+	"strconv"
 
-	"github.com/jinzhu/gorm"
-	_ "github.com/go-sql-driver/mysql"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+	"github.com/photographer/order_management/config"
 	"github.com/photographer/order_management/models"
 )
 
 var DB *gorm.DB
 
-type sqlLogger struct{}
-
-func (l sqlLogger) Print(v ...interface{}) {
-	log.Println(v...)
-}
-
 func Connect() error {
 	var err error
-	DB, err = gorm.Open("mysql", "root:123456@tcp(localhost:3306)/order_management?charset=utf8mb4&parseTime=True&loc=Local")
+	cfg := config.AppConfig.Database
+	
+	dsn := cfg.Username + ":" + cfg.Password + "@tcp(" + cfg.Host + ":" + strconv.Itoa(cfg.Port) + ")/" + cfg.Database + "?charset=utf8mb4&parseTime=True&loc=Local"
+	
+	DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Info),
+	})
 	if err != nil {
 		return err
 	}
 
-	DB.LogMode(true)
-	DB.SetLogger(sqlLogger{})
-
 	log.SetOutput(os.Stdout)
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 
-	DB.AutoMigrate(&models.Order{}, &models.Shop{})
+	err = DB.AutoMigrate(&models.Order{}, &models.Shop{})
+	if err != nil {
+		return err
+	}
+	
+	log.Printf("Database connected: %s:%d/%s", cfg.Host, cfg.Port, cfg.Database)
 	return nil
 }
 
 func Close() {
-	DB.Close()
+	sqlDB, err := DB.DB()
+	if err == nil {
+		sqlDB.Close()
+	}
 }

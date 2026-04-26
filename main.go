@@ -1,17 +1,29 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/photographer/order_management/config"
 	"github.com/photographer/order_management/controllers"
 	"github.com/photographer/order_management/database"
+	"github.com/photographer/order_management/models"
 )
 
 func main() {
-	err := database.Connect()
+	configPath := flag.String("c", "config.yaml", "Path to config file")
+	flag.Parse()
+
+	err := config.LoadConfig(*configPath)
+	if err != nil {
+		log.Fatal("Failed to load config:", err)
+	}
+
+	err = database.Connect()
 	if err != nil {
 		log.Fatal("Failed to connect database:", err)
 	}
@@ -41,6 +53,9 @@ func main() {
 	r.POST("/api/shops", controllers.CreateShop)
 	r.PUT("/api/shops/:id", controllers.UpdateShop)
 	r.DELETE("/api/shops/:id", controllers.DeleteShop)
+	r.GET("/api/shops/trash", controllers.GetDeletedShops)
+	r.POST("/api/shops/:id/restore", controllers.RestoreShop)
+	r.DELETE("/api/shops/:id/force-delete", controllers.ForceDeleteShop)
 
 	r.LoadHTMLGlob("templates/*")
 	r.GET("/", func(c *gin.Context) {
@@ -59,10 +74,13 @@ func main() {
 		c.HTML(http.StatusOK, "trash.html", nil)
 	})
 
-	log.Println("Server running on http://localhost:8080")
-	r.Run(":8080")
-}
+	r.GET("/api/clean", func(c *gin.Context) {
+		database.DB.Delete(&models.Order{})
+		database.DB.Delete(&models.Shop{})
+		c.JSON(http.StatusOK, gin.H{"message": "数据已清空"})
+	})
 
-func httpStatusOK() int {
-	return 200
+	port := strconv.Itoa(config.AppConfig.Server.Port)
+	log.Println("Server running on http://localhost:" + port)
+	r.Run(":" + port)
 }

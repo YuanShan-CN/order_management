@@ -6,11 +6,19 @@
     <title>收入统计 - 摄影订单管理系统</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 0; background: #f5f5f5; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; }
-        .header h1 { font-size: 24px; font-weight: 400; }
-        .header a { color: white; text-decoration: none; background: rgba(255,255,255,0.2); padding: 8px 20px; border-radius: 20px; font-size: 14px; }
-        .header a:hover { background: rgba(255,255,255,0.3); }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 0; background: #f5f5f5; display: flex; min-height: 100vh; }
+        .sidebar { width: 220px; background: linear-gradient(180deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; display: flex; flex-direction: column; position: fixed; left: 0; top: 0; height: 100%; }
+        .sidebar-header { margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.2); }
+        .sidebar-header h1 { font-size: 18px; font-weight: 400; }
+        .sidebar-nav { flex: 1; }
+        .nav-item { display: flex; align-items: center; gap: 10px; padding: 12px 15px; margin-bottom: 5px; border-radius: 8px; cursor: pointer; transition: all 0.3s; color: white; text-decoration: none; }
+        .nav-item:hover { background: rgba(255,255,255,0.15); }
+        .nav-item.active { background: rgba(255,255,255,0.25); }
+        .nav-item i { font-size: 18px; }
+        .nav-item span { font-size: 14px; }
+        .main-content { flex: 1; margin-left: 220px; min-height: 100vh; }
+        .header { background: white; padding: 20px 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .header h2 { font-size: 20px; font-weight: 500; color: #333; }
         .container { max-width: 1000px; margin: 0 auto; padding: 30px; }
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
         .stat-card { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; }
@@ -33,6 +41,9 @@
         .filter-bar { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
         .filter-group { display: flex; align-items: center; gap: 8px; }
         select, input { padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+        .btn { padding: 10px 25px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500; }
+        .btn-primary { background: #4CAF50; color: white; }
+        .btn-primary:hover { background: #45a049; }
         .sortable { cursor: pointer; user-select: none; position: relative; }
         .sortable::after { content: ' ↕'; font-size: 12px; color: #999; }
         .sortable.asc::after { content: ' ↑'; color: #667eea; }
@@ -50,97 +61,154 @@
         .details-sortable::after { content: ' ↕'; font-size: 10px; color: #999; }
         .details-sortable.asc::after { content: ' ↑'; color: #667eea; }
         .details-sortable.desc::after { content: ' ↓'; color: #667eea; }
+        .tabs-container { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #eee; justify-content: flex-end; }
+        .tab-item { padding: 10px 20px; background: #f8f9fa; border: 1px solid #ddd; border-bottom: none; border-radius: 5px 5px 0 0; cursor: pointer; transition: all 0.3s; font-weight: 500; }
+        .tab-item:hover { background: #eee; }
+        .tab-item.active { background: white; border-color: #667eea; color: #667eea; }
+        .tab-content { min-height: 200px; }
+        .shop-bar-chart { display: flex; flex-direction: column; gap: 10px; padding: 20px; }
+        .shop-bar-item { display: flex; align-items: center; gap: 15px; }
+        .shop-bar-label { width: 120px; font-size: 14px; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .shop-bar-wrapper { flex: 1; height: 30px; background: #f0f0f0; border-radius: 15px; overflow: hidden; }
+        .shop-bar-fill { height: 100%; border-radius: 15px; display: flex; align-items: center; padding-left: 10px; color: white; font-size: 12px; font-weight: 500; }
+        .shop-bar-value { width: 100px; text-align: right; font-weight: 600; color: #333; }
+        .shop-pie-chart { display: flex; justify-content: center; align-items: center; gap: 30px; padding: 30px; }
+        .pie-container { position: relative; width: 250px; height: 250px; }
+        .pie-chart { width: 100%; height: 100%; border-radius: 50%; background: conic-gradient(#667eea 0deg, #764ba2 60deg, #4CAF50 120deg, #FF9800 180deg, #f44336 240deg, #2196F3 300deg, #667eea 360deg); }
+        .pie-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 100px; height: 100px; background: white; border-radius: 50%; display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .pie-center-total { font-size: 18px; font-weight: 600; color: #333; }
+        .pie-center-label { font-size: 12px; color: #999; }
+        .pie-legend { display: flex; flex-direction: column; gap: 10px; max-height: 250px; overflow-y: auto; }
+        .legend-item { display: flex; align-items: center; gap: 10px; }
+        .legend-color { width: 15px; height: 15px; border-radius: 3px; }
+        .legend-text { font-size: 14px; color: #333; }
+        .legend-value { font-weight: 600; color: #667eea; }
+        .legend-percentage { font-size: 12px; color: #999; margin-left: 5px; }
+        .pie-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        .pie-tooltip { position: fixed; background: rgba(0,0,0,0.85); color: white; padding: 12px 15px; border-radius: 8px; font-size: 13px; z-index: 1000; pointer-events: none; min-width: 150px; }
+        .tooltip-name { font-weight: 600; margin-bottom: 5px; }
+        .tooltip-count, .tooltip-income, .tooltip-percentage { margin-bottom: 3px; opacity: 0.9; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>💰 收入统计</h1>
-        <a href="/">返回首页</a>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h1>📷 订单管理系统</h1>
+        </div>
+        <div class="sidebar-nav">
+            <a href="/" class="nav-item"><i>🏠</i><span>首页</span></a>
+            <a href="/orders" class="nav-item"><i>📝</i><span>订单管理</span></a>
+            <a href="/shops" class="nav-item"><i>🏪</i><span>店铺维护</span></a>
+            <a href="/stats" class="nav-item active"><i>💰</i><span>收入统计</span></a>
+        </div>
     </div>
 
-    <div class="container">
-        <div class="filter-bar">
-            <div class="filter-group">
-                <label>年份</label>
-                <select id="yearSelect">
-                    <option value="all">全部年份</option>
-                </select>
-            </div>
-            <div class="filter-group">
-                <label>月份</label>
-                <select id="monthSelect">
-                    <option value="all">全部月份</option>
-                    <option value="1">1月</option>
-                    <option value="2">2月</option>
-                    <option value="3">3月</option>
-                    <option value="4">4月</option>
-                    <option value="5">5月</option>
-                    <option value="6">6月</option>
-                    <option value="7">7月</option>
-                    <option value="8">8月</option>
-                    <option value="9">9月</option>
-                    <option value="10">10月</option>
-                    <option value="11">11月</option>
-                    <option value="12">12月</option>
-                </select>
-            </div>
-            <div class="filter-group">
-                <label>结算状态</label>
-                <select id="settledSelect">
-                    <option value="all">全部状态</option>
-                    <option value="settled">已结算</option>
-                    <option value="unsettled">未结算</option>
-                </select>
-            </div>
-            <div class="filter-group">
-                <label>店铺</label>
-                <select id="shopSelect">
-                    <option value="all">全部店铺</option>
-                </select>
-            </div>
-            <button class="btn btn-primary" onclick="loadStats()">查询</button>
+    <div class="main-content">
+        <div class="header">
+            <h2>💰 收入统计</h2>
         </div>
 
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-value" id="totalOrders">0</div>
-                <div class="stat-label">订单总数</div>
+        <div class="container">
+            <div class="filter-bar">
+                <div class="filter-group">
+                    <label>年份</label>
+                    <select id="yearSelect">
+                        <option value="all">全部年份</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>月份</label>
+                    <select id="monthSelect">
+                        <option value="all">全部月份</option>
+                        <option value="1">1月</option>
+                        <option value="2">2月</option>
+                        <option value="3">3月</option>
+                        <option value="4">4月</option>
+                        <option value="5">5月</option>
+                        <option value="6">6月</option>
+                        <option value="7">7月</option>
+                        <option value="8">8月</option>
+                        <option value="9">9月</option>
+                        <option value="10">10月</option>
+                        <option value="11">11月</option>
+                        <option value="12">12月</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>结算状态</label>
+                    <select id="settledSelect">
+                        <option value="all">全部状态</option>
+                        <option value="settled">已结算</option>
+                        <option value="unsettled">未结算</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>店铺</label>
+                    <select id="shopSelect">
+                        <option value="all">全部店铺</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" onclick="loadStats()">查询</button>
             </div>
-            <div class="stat-card">
-                <div class="stat-value">¥<span id="totalIncome">0.00</span></div>
-                <div class="stat-label">总收入</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value" id="settledOrders">0</div>
-                <div class="stat-label">已结算订单</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value">¥<span id="settledIncome">0.00</span></div>
-                <div class="stat-label">已结算收入</div>
-            </div>
-        </div>
 
-        <div class="chart-container">
-            <div class="chart-title">月度收入趋势</div>
-            <div class="chart-bars" id="monthlyChart">
-                <div class="empty-state">暂无数据</div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalOrders">0</div>
+                    <div class="stat-label">订单总数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">¥<span id="totalIncome">0.00</span></div>
+                    <div class="stat-label">总收入</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="settledOrders">0</div>
+                    <div class="stat-label">已结算订单</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">¥<span id="settledIncome">0.00</span></div>
+                    <div class="stat-label">已结算收入</div>
+                </div>
             </div>
-        </div>
 
-        <div class="table-container">
-            <div class="chart-title">店铺收入统计</div>
-            <table>
-                <thead>
-                    <tr>
-                        <th class="sortable" onclick="sortShopStats('name')">店铺名称</th>
-                        <th class="sortable" onclick="sortShopStats('count')">订单数</th>
-                        <th class="sortable desc" onclick="sortShopStats('income')">总收入</th>
-                    </tr>
-                </thead>
-                <tbody id="shopStats">
-                    <tr><td colspan="3" class="empty-state">暂无数据</td></tr>
-                </tbody>
-            </table>
+            <div class="chart-container">
+                <div class="chart-title">月度收入趋势</div>
+                <div class="chart-bars" id="monthlyChart">
+                    <div class="empty-state">暂无数据</div>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <div class="chart-title">店铺收入统计</div>
+                <div class="tabs-container">
+                    <div class="tab-item active" id="tableTab" onclick="switchShopTab('table')">表格</div>
+                    <div class="tab-item" id="barTab" onclick="switchShopTab('bar')">条形图</div>
+                    <div class="tab-item" id="pieTab" onclick="switchShopTab('pie')">饼图</div>
+                </div>
+                <div id="tableView" class="tab-content">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="sortable" onclick="sortShopStats('name')">店铺名称</th>
+                                <th class="sortable" onclick="sortShopStats('count')">订单数</th>
+                                <th class="sortable desc" onclick="sortShopStats('income')">总收入</th>
+                            </tr>
+                        </thead>
+                        <tbody id="shopStats">
+                            <tr><td colspan="3" class="empty-state">暂无数据</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="barView" class="tab-content" style="display: none;">
+                    <div class="shop-bar-chart" id="shopBarChart">
+                        <div class="empty-state">暂无数据</div>
+                    </div>
+                </div>
+                <div id="pieView" class="tab-content" style="display: none;">
+                    <div class="shop-pie-chart" id="shopPieChart">
+                        <div class="empty-state">暂无数据</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -181,6 +249,16 @@
             updateSummary(orders);
             updateMonthlyChart(orders);
             updateShopStats(orders);
+            
+            const activeTab = document.querySelector('.tab-item.active');
+            if (activeTab) {
+                const tabId = activeTab.id;
+                if (tabId === 'barTab') {
+                    renderBarChart();
+                } else if (tabId === 'pieTab') {
+                    renderPieChart();
+                }
+            }
         }
 
         function updateSummary(orders) {
@@ -368,6 +446,182 @@
             renderShopStats();
         }
 
+        function switchShopTab(tab) {
+            document.getElementById('tableTab').classList.toggle('active', tab === 'table');
+            document.getElementById('barTab').classList.toggle('active', tab === 'bar');
+            document.getElementById('pieTab').classList.toggle('active', tab === 'pie');
+            document.getElementById('tableView').style.display = tab === 'table' ? 'block' : 'none';
+            document.getElementById('barView').style.display = tab === 'bar' ? 'block' : 'none';
+            document.getElementById('pieView').style.display = tab === 'pie' ? 'block' : 'none';
+            
+            if (tab === 'bar') {
+                renderBarChart();
+            } else if (tab === 'pie') {
+                renderPieChart();
+            }
+        }
+
+        const chartColors = ['#667eea', '#764ba2', '#4CAF50', '#FF9800', '#f44336', '#2196F3', '#9C27B0', '#00BCD4', '#FFEB3B', '#FF5722'];
+
+        function renderBarChart() {
+            const sortedList = [...shopDataList].sort((a, b) => b.income - a.income);
+            if (sortedList.length === 0) {
+                document.getElementById('shopBarChart').innerHTML = '<div class="empty-state">暂无数据</div>';
+                return;
+            }
+            
+            const maxIncome = Math.max(...sortedList.map(item => item.income), 1);
+            
+            const bars = sortedList.map((item, index) => {
+                const percentage = (item.income / maxIncome) * 100;
+                const color = chartColors[index % chartColors.length];
+                return `
+                    <div class="shop-bar-item">
+                        <div class="shop-bar-label" title="${item.name}">${item.name}</div>
+                        <div class="shop-bar-wrapper">
+                            <div class="shop-bar-fill" style="width: ${percentage}%; background: ${color};">
+                                ${item.count}单
+                            </div>
+                        </div>
+                        <div class="shop-bar-value">¥${item.income.toFixed(2)}</div>
+                    </div>
+                `;
+            }).join('');
+            
+            document.getElementById('shopBarChart').innerHTML = bars;
+        }
+
+        function renderPieChart() {
+            const sortedList = [...shopDataList].sort((a, b) => b.income - a.income);
+            if (sortedList.length === 0) {
+                document.getElementById('shopPieChart').innerHTML = '<div class="empty-state">暂无数据</div>';
+                return;
+            }
+            
+            const totalIncome = sortedList.reduce((sum, item) => sum + item.income, 0);
+            
+            let gradientParts = [];
+            let svgPaths = [];
+            let currentAngle = 0;
+            const centerX = 125;
+            const centerY = 125;
+            const radius = 100;
+            const innerRadius = 50;
+            
+            sortedList.forEach((item, index) => {
+                const percentage = (item.income / totalIncome) * 100;
+                const angle = (item.income / totalIncome) * 360;
+                const color = chartColors[index % chartColors.length];
+                
+                gradientParts.push(`${color} ${currentAngle}deg`);
+                svgPaths.push(createPieSlice(currentAngle, angle, radius, innerRadius, centerX, centerY, color, item, percentage));
+                
+                currentAngle += angle;
+                gradientParts.push(`${color} ${currentAngle}deg`);
+            });
+            
+            const gradient = gradientParts.join(', ');
+            
+            const legendItems = sortedList.map((item, index) => {
+                const percentage = (item.income / totalIncome) * 100;
+                const color = chartColors[index % chartColors.length];
+                return `
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: ${color};"></div>
+                        <div class="legend-text">${item.name}</div>
+                        <div class="legend-value">¥${item.income.toFixed(2)}</div>
+                        <div class="legend-percentage">(${percentage.toFixed(1)}%)</div>
+                    </div>
+                `;
+            }).join('');
+            
+            const pieHtml = `
+                <div class="pie-container">
+                    <div class="pie-chart" style="background: conic-gradient(${gradient});"></div>
+                    <svg class="pie-svg" viewBox="0 0 250 250">
+                        ${svgPaths.join('')}
+                    </svg>
+                    <div class="pie-center">
+                        <div class="pie-center-total">¥${totalIncome.toFixed(2)}</div>
+                        <div class="pie-center-label">总收入</div>
+                    </div>
+                    <div class="pie-tooltip" id="pieTooltip" style="display: none;">
+                        <div class="tooltip-name"></div>
+                        <div class="tooltip-count"></div>
+                        <div class="tooltip-income"></div>
+                        <div class="tooltip-percentage"></div>
+                    </div>
+                </div>
+                <div class="pie-legend">${legendItems}</div>
+            `;
+            
+            document.getElementById('shopPieChart').innerHTML = pieHtml;
+            
+            initPieTooltip();
+        }
+
+        function createPieSlice(startAngle, angle, outerRadius, innerRadius, cx, cy, color, item, percentage) {
+            const startRad = (startAngle - 90) * Math.PI / 180;
+            const endRad = (startAngle + angle - 90) * Math.PI / 180;
+            
+            const x1 = cx + outerRadius * Math.cos(startRad);
+            const y1 = cy + outerRadius * Math.sin(startRad);
+            const x2 = cx + outerRadius * Math.cos(endRad);
+            const y2 = cy + outerRadius * Math.sin(endRad);
+            const x3 = cx + innerRadius * Math.cos(endRad);
+            const y3 = cy + innerRadius * Math.sin(endRad);
+            const x4 = cx + innerRadius * Math.cos(startRad);
+            const y4 = cy + innerRadius * Math.sin(startRad);
+            
+            const largeArcFlag = angle > 180 ? 1 : 0;
+            
+            const pathD = `M ${x1} ${y1} A ${outerRadius} ${outerRadius} 0 ${largeArcFlag} 1 ${x2} ${y2} L ${x3} ${y3} A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 0 ${x4} ${y4} Z`;
+            
+            return `
+                <path d="${pathD}" fill="${color}" class="pie-slice" 
+                      data-name="${encodeURIComponent(item.name)}" data-count="${item.count}" 
+                      data-income="${item.income}" data-percentage="${percentage}"
+                      style="cursor: pointer; opacity: 0.3;" />
+            `;
+        }
+
+        function initPieTooltip() {
+            const slices = document.querySelectorAll('.pie-slice');
+            const tooltip = document.getElementById('pieTooltip');
+            
+            slices.forEach((slice, index) => {
+                slice.addEventListener('mouseenter', (e) => {
+                    slices.forEach((s, i) => {
+                        s.style.opacity = i === index ? 1 : 0.3;
+                    });
+                    
+                    const name = decodeURIComponent(slice.getAttribute('data-name'));
+                    const count = slice.getAttribute('data-count');
+                    const income = parseFloat(slice.getAttribute('data-income'));
+                    const percentage = parseFloat(slice.getAttribute('data-percentage'));
+                    
+                    tooltip.querySelector('.tooltip-name').textContent = `店铺: ${name}`;
+                    tooltip.querySelector('.tooltip-count').textContent = `订单数: ${count}单`;
+                    tooltip.querySelector('.tooltip-income').textContent = `收入: ¥${income.toFixed(2)}`;
+                    tooltip.querySelector('.tooltip-percentage').textContent = `占比: ${percentage.toFixed(1)}%`;
+                    
+                    tooltip.style.display = 'block';
+                    tooltip.style.left = (e.clientX - 80) + 'px';
+                    tooltip.style.top = (e.clientY - 80) + 'px';
+                });
+                
+                slice.addEventListener('mousemove', (e) => {
+                    tooltip.style.left = (e.clientX - 80) + 'px';
+                    tooltip.style.top = (e.clientY - 80) + 'px';
+                });
+                
+                slice.addEventListener('mouseleave', () => {
+                    slices.forEach(s => s.style.opacity = 0.3);
+                    tooltip.style.display = 'none';
+                });
+            });
+        }
+
         function populateYearSelect() {
             const select = document.getElementById('yearSelect');
             const currentYear = new Date().getFullYear();
@@ -375,6 +629,9 @@
                 const option = document.createElement('option');
                 option.value = year;
                 option.textContent = year + '年';
+                if (year === currentYear) {
+                    option.selected = true;
+                }
                 select.appendChild(option);
             }
         }

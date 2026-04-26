@@ -1,11 +1,12 @@
 package controllers
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 	"github.com/photographer/order_management/database"
 	"github.com/photographer/order_management/models"
 )
@@ -57,13 +58,13 @@ func GetOrders(c *gin.Context) {
 		db = db.Order("date DESC")
 	}
 
-	var total int
+	var total int64
 	db.Model(&models.Order{}).Count(&total)
 
 	offset := (page - 1) * pageSize
 	db.Offset(offset).Limit(pageSize).Find(&orders)
 
-	totalPages := (total + pageSize - 1) / pageSize
+	totalPages := (int(total) + pageSize - 1) / pageSize
 
 	c.JSON(http.StatusOK, gin.H{
 		"orders":       orders,
@@ -78,7 +79,7 @@ func GetOrder(c *gin.Context) {
 	id := c.Param("id")
 	var order models.Order
 	if err := database.DB.First(&order, id).Error; err != nil {
-		if gorm.IsRecordNotFoundError(err) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
 			return
 		}
@@ -105,7 +106,7 @@ func UpdateOrder(c *gin.Context) {
 	id := c.Param("id")
 	var order models.Order
 	if err := database.DB.First(&order, id).Error; err != nil {
-		if gorm.IsRecordNotFoundError(err) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
 			return
 		}
@@ -124,7 +125,7 @@ func DeleteOrder(c *gin.Context) {
 	id := c.Param("id")
 	var order models.Order
 	if err := database.DB.Where("deleted_at IS NULL").First(&order, id).Error; err != nil {
-		if gorm.IsRecordNotFoundError(err) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
 			return
 		}
@@ -160,13 +161,13 @@ func GetDeletedOrders(c *gin.Context) {
 		db = db.Order("deleted_at DESC")
 	}
 
-	var total int
+	var total int64
 	db.Model(&models.Order{}).Count(&total)
 
 	offset := (page - 1) * pageSize
 	db.Offset(offset).Limit(pageSize).Find(&orders)
 
-	totalPages := (total + pageSize - 1) / pageSize
+	totalPages := (int(total) + pageSize - 1) / pageSize
 
 	c.JSON(http.StatusOK, gin.H{
 		"orders":       orders,
@@ -181,7 +182,7 @@ func RestoreOrder(c *gin.Context) {
 	id := c.Param("id")
 	var order models.Order
 	if err := database.DB.Unscoped().Where("deleted_at IS NOT NULL").First(&order, id).Error; err != nil {
-		if gorm.IsRecordNotFoundError(err) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Order not found in trash"})
 			return
 		}
@@ -196,7 +197,7 @@ func ForceDeleteOrder(c *gin.Context) {
 	id := c.Param("id")
 	var order models.Order
 	if err := database.DB.Unscoped().Where("deleted_at IS NOT NULL").First(&order, id).Error; err != nil {
-		if gorm.IsRecordNotFoundError(err) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Order not found in trash"})
 			return
 		}

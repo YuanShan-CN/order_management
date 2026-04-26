@@ -6,11 +6,19 @@
     <title>回收站 - 摄影订单管理系统</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 0; background: #f5f5f5; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; }
-        .header h1 { font-size: 24px; font-weight: 400; }
-        .header a { color: white; text-decoration: none; background: rgba(255,255,255,0.2); padding: 8px 20px; border-radius: 20px; font-size: 14px; }
-        .header a:hover { background: rgba(255,255,255,0.3); }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 0; background: #f5f5f5; display: flex; min-height: 100vh; }
+        .sidebar { width: 220px; background: linear-gradient(180deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; display: flex; flex-direction: column; position: fixed; left: 0; top: 0; height: 100%; }
+        .sidebar-header { margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.2); }
+        .sidebar-header h1 { font-size: 18px; font-weight: 400; }
+        .sidebar-nav { flex: 1; }
+        .nav-item { display: flex; align-items: center; gap: 10px; padding: 12px 15px; margin-bottom: 5px; border-radius: 8px; cursor: pointer; transition: all 0.3s; color: white; text-decoration: none; }
+        .nav-item:hover { background: rgba(255,255,255,0.15); }
+        .nav-item.active { background: rgba(255,255,255,0.25); }
+        .nav-item i { font-size: 18px; }
+        .nav-item span { font-size: 14px; }
+        .main-content { flex: 1; margin-left: 220px; min-height: 100vh; }
+        .header { background: white; padding: 20px 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .header h2 { font-size: 20px; font-weight: 500; color: #333; }
         .container { max-width: 1200px; margin: 0 auto; padding: 30px; }
         table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; }
@@ -33,58 +41,114 @@
         .search-bar { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
         .search-input { flex: 1; min-width: 200px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
         .deleted-time { color: #999; font-size: 12px; }
+        .section { margin-bottom: 40px; }
+        .section-title { font-size: 18px; color: #333; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #eee; }
+        .tabs { display: flex; gap: 15px; margin-bottom: 20px; }
+        .tab { padding: 10px 20px; background: white; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; }
+        .tab.active { background: #667eea; color: white; border-color: #667eea; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>🗑️ 回收站</h1>
-        <div>
-            <a href="/orders">返回订单管理</a>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h1>📷 订单管理系统</h1>
+        </div>
+        <div class="sidebar-nav">
+            <a href="/" class="nav-item"><i>🏠</i><span>首页</span></a>
+            <a href="/orders" class="nav-item"><i>📝</i><span>订单管理</span></a>
+            <a href="/shops" class="nav-item"><i>🏪</i><span>店铺维护</span></a>
+            <a href="/stats" class="nav-item"><i>💰</i><span>收入统计</span></a>
         </div>
     </div>
 
-    <div class="container">
-        <div class="search-bar">
-            <input type="text" id="searchInput" class="search-input" placeholder="搜索地点、内容、店铺..." onkeyup="handleSearch">
+    <div class="main-content">
+        <div class="header">
+            <h2>🗑️ 回收站</h2>
         </div>
 
-        <table>
-            <thead>
-                <tr>
-                    <th>日期</th>
-                    <th>地点</th>
-                    <th>内容</th>
-                    <th>费用</th>
-                    <th>结算</th>
-                    <th>修图</th>
-                    <th>店铺</th>
-                    <th>删除时间</th>
-                    <th>操作</th>
-                </tr>
-            </thead>
-            <tbody id="orderTable">
-                <tr><td colspan="9" class="empty-state">回收站为空</td></tr>
-            </tbody>
-        </table>
+        <div class="container">
+            <div class="tabs">
+                <div class="tab" id="orderTab" onclick="switchTab('order')">订单回收站</div>
+                <div class="tab" id="shopTab" onclick="switchTab('shop')">店铺回收站</div>
+            </div>
 
-        <div class="pagination" id="pagination">
-            <button class="page-btn" id="prevBtn" onclick="prevPage()" disabled>上一页</button>
-            <span id="pageInfo">第 1 页 / 共 1 页</span>
-            <button class="page-btn" id="nextBtn" onclick="nextPage()" disabled>下一页</button>
+            <div id="orderSection" class="section" style="display: none;">
+                <div class="search-bar">
+                    <input type="text" id="orderSearchInput" class="search-input" placeholder="搜索地点、内容、店铺..." onkeyup="handleOrderSearch">
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>日期</th>
+                            <th>地点</th>
+                            <th>内容</th>
+                            <th>费用</th>
+                            <th>结算</th>
+                            <th>店铺</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orderTable">
+                        <tr><td colspan="8" class="empty-state">订单回收站为空</td></tr>
+                    </tbody>
+                </table>
+
+                <div class="pagination" id="orderPagination">
+                    <button class="page-btn" id="orderPrevBtn" onclick="orderPrevPage()" disabled>上一页</button>
+                    <span id="orderPageInfo">第 1 页 / 共 1 页</span>
+                    <button class="page-btn" id="orderNextBtn" onclick="orderNextPage()" disabled>下一页</button>
+                </div>
+            </div>
+
+            <div id="shopSection" class="section" style="display: none;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>店铺名称</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="shopTable">
+                        <tr><td colspan="3" class="empty-state">店铺回收站为空</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
     <script>
-        const API_URL = '/api/orders/trash';
-        let currentPage = 1;
-        let totalPages = 1;
-        let searchKeyword = '';
+        let currentTab = 'order';
+        
+        let orderCurrentPage = 1;
+        let orderTotalPages = 1;
+        let orderSearchKeyword = '';
         const pageSize = 15;
 
+        function getUrlParam(name) {
+            const params = new URLSearchParams(window.location.search);
+            return params.get(name);
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.getElementById('orderTab').classList.toggle('active', tab === 'order');
+            document.getElementById('shopTab').classList.toggle('active', tab === 'shop');
+            document.getElementById('orderSection').style.display = tab === 'order' ? 'block' : 'none';
+            document.getElementById('shopSection').style.display = tab === 'shop' ? 'block' : 'none';
+            
+            if (tab === 'order') {
+                loadOrders();
+            } else {
+                loadShops();
+            }
+        }
+
         async function loadOrders() {
-            let url = `${API_URL}?page=${currentPage}&size=${pageSize}`;
-            if (searchKeyword) {
-                url += `&search=${encodeURIComponent(searchKeyword)}`;
+            let url = `/api/orders/trash?page=${orderCurrentPage}&size=${pageSize}`;
+            if (orderSearchKeyword) {
+                url += `&search=${encodeURIComponent(orderSearchKeyword)}`;
             }
             
             const response = await fetch(url);
@@ -92,9 +156,9 @@
             
             if (result.orders) {
                 renderOrders(result.orders);
-                totalPages = result.totalPages;
-                currentPage = result.currentPage;
-                updatePagination();
+                orderTotalPages = result.totalPages;
+                orderCurrentPage = result.currentPage;
+                updateOrderPagination();
             } else {
                 renderOrders(result);
             }
@@ -103,7 +167,7 @@
         function renderOrders(orders) {
             const table = document.getElementById('orderTable');
             if (orders.length === 0) {
-                table.innerHTML = '<tr><td colspan="9" class="empty-state">回收站为空</td></tr>';
+                table.innerHTML = '<tr><td colspan="8" class="empty-state">订单回收站为空</td></tr>';
                 return;
             }
             table.innerHTML = orders.map(order => `
@@ -113,54 +177,70 @@
                     <td>${order.content || '-'}</td>
                     <td>¥${order.fee.toFixed(2)}</td>
                     <td><span class="${order.settled ? 'status-yes' : 'status-no'}">${order.settled ? '是' : '否'}</span></td>
-                    <td><span class="${order.edited ? 'status-yes' : 'status-no'}">${order.edited ? '是' : '否'}</span></td>
                     <td>${order.shop || '-'}</td>
-                    <td class="deleted-time">${formatDateTime(order.deleted_at)}</td>
                     <td class="actions">
                         <button class="btn btn-restore" onclick="restoreOrder(${order.ID})">恢复</button>
-                        <button class="btn btn-danger" onclick="forceDelete(${order.ID})">永久删除</button>
+                        <button class="btn btn-danger" onclick="forceDeleteOrder(${order.ID})">永久删除</button>
                     </td>
                 </tr>
             `).join('');
         }
 
-        function updatePagination() {
-            document.getElementById('pageInfo').textContent = `第 ${currentPage} 页 / 共 ${totalPages} 页`;
-            document.getElementById('prevBtn').disabled = currentPage <= 1;
-            document.getElementById('nextBtn').disabled = currentPage >= totalPages;
+        function updateOrderPagination() {
+            document.getElementById('orderPageInfo').textContent = `第 ${orderCurrentPage} 页 / 共 ${orderTotalPages} 页`;
+            document.getElementById('orderPrevBtn').disabled = orderCurrentPage <= 1;
+            document.getElementById('orderNextBtn').disabled = orderCurrentPage >= orderTotalPages;
         }
 
-        function prevPage() {
-            if (currentPage > 1) {
-                currentPage--;
+        function orderPrevPage() {
+            if (orderCurrentPage > 1) {
+                orderCurrentPage--;
                 loadOrders();
             }
         }
 
-        function nextPage() {
-            if (currentPage < totalPages) {
-                currentPage++;
+        function orderNextPage() {
+            if (orderCurrentPage < orderTotalPages) {
+                orderCurrentPage++;
                 loadOrders();
             }
         }
 
-        function handleSearch(event) {
+        function handleOrderSearch(event) {
             if (event.key === 'Enter') {
-                searchKeyword = document.getElementById('searchInput').value.trim();
-                currentPage = 1;
+                orderSearchKeyword = document.getElementById('orderSearchInput').value.trim();
+                orderCurrentPage = 1;
                 loadOrders();
             }
+        }
+
+        async function loadShops() {
+            const response = await fetch('/api/shops/trash');
+            const shops = await response.json();
+            renderShops(shops);
+        }
+
+        function renderShops(shops) {
+            const table = document.getElementById('shopTable');
+            if (shops.length === 0) {
+                table.innerHTML = '<tr><td colspan="3" class="empty-state">店铺回收站为空</td></tr>';
+                return;
+            }
+            table.innerHTML = shops.map(shop => `
+                <tr>
+                    <td>${shop.ID}</td>
+                    <td>${shop.name || '-'}</td>
+                    <td class="actions">
+                        <button class="btn btn-restore" onclick="restoreShop(${shop.ID})">恢复</button>
+                        <button class="btn btn-danger" onclick="forceDeleteShop(${shop.ID})">永久删除</button>
+                    </td>
+                </tr>
+            `).join('');
         }
 
         function formatDate(dateStr) {
             if (!dateStr) return '';
             return dateStr.split('T')[0];
-        }
-
-        function formatDateTime(dateStr) {
-            if (!dateStr) return '';
-            const date = new Date(dateStr);
-            return date.toLocaleString('zh-CN');
         }
 
         async function restoreOrder(id) {
@@ -170,14 +250,31 @@
             }
         }
 
-        async function forceDelete(id) {
+        async function forceDeleteOrder(id) {
             if (confirm('确定要永久删除这个订单吗？此操作不可撤销！')) {
                 await fetch(`/api/orders/${id}/force-delete`, { method: 'DELETE' });
                 loadOrders();
             }
         }
 
-        document.addEventListener('DOMContentLoaded', loadOrders);
+        async function restoreShop(id) {
+            if (confirm('确定要恢复这个店铺吗？')) {
+                await fetch(`/api/shops/${id}/restore`, { method: 'POST' });
+                loadShops();
+            }
+        }
+
+        async function forceDeleteShop(id) {
+            if (confirm('确定要永久删除这个店铺吗？此操作不可撤销！')) {
+                await fetch(`/api/shops/${id}/force-delete`, { method: 'DELETE' });
+                loadShops();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const defaultTab = getUrlParam('tab') || 'order';
+            switchTab(defaultTab);
+        });
     </script>
 </body>
 </html>
