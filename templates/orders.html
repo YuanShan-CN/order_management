@@ -288,7 +288,7 @@
             return response;
         }
 
-        function exportCSV() {
+        async function exportCSV() {
             const token = getToken();
             if (!token) {
                 window.location.href = '/login';
@@ -300,11 +300,31 @@
                 url += `&search=${encodeURIComponent(searchKeyword)}`;
             }
             
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', 'orders.csv');
-            link.setAttribute('target', '_blank');
-            link.click();
+            try {
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'text/csv'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('下载失败');
+                }
+                
+                const blob = await response.blob();
+                const urlObject = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = urlObject;
+                link.setAttribute('download', 'orders.csv');
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(urlObject);
+            } catch (error) {
+                alert('导出失败: ' + error.message);
+            }
         }
 
         async function loadOrders() {
