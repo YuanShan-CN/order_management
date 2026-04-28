@@ -1,0 +1,13 @@
+database:
+  host: localhost
+  port: 3306
+  username: root
+  password: your_password
+  database: order_management
+
+server:
+  port: 8080
+
+jwt:
+  secret: your-secret-key-change-in-production
+  expire_hour: 24
