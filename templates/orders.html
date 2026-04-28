@@ -345,6 +345,7 @@
             document.getElementById('importResult').innerHTML = '';
             document.getElementById('importBtn').disabled = false;
             document.getElementById('importBtn').textContent = '导入';
+            document.getElementById('importBtn').style.display = 'block';
         }
         
         async function importCSV(file) {
@@ -795,9 +796,8 @@
                     loadOrders();
                     loadShops(); // 刷新店铺列表
                     
-                    // 保持按钮禁用状态
-                    importBtn.disabled = true;
-                    importBtn.textContent = '已完成';
+                    // 隐藏原来的提交按钮
+                    importBtn.style.display = 'none';
                 } else {
                     importResult.innerHTML = `
                         <div style="padding: 10px; background: #FFEBEE; border-radius: 4px; color: #C62828;">
