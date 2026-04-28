@@ -32,5 +32,5 @@ services:
     restart: unless-stopped
 
 networks:
-  order_management_network:
+  app_network:
     driver: bridge

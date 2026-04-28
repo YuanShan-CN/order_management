@@ -45,7 +45,7 @@ docker-compose up -d
 
 # 5. 访问系统
 # 前端页面: http://localhost:8081
-# 数据库端口: 3307
+# 数据库端口: 3306
 ```
 
 ### 本地开发
@@ -53,7 +53,7 @@ docker-compose up -d
 ```bash
 # 1. 设置环境变量
 export DB_HOST=127.0.0.1
-export DB_PORT=3307
+export DB_PORT=3306
 export DB_USER=root
 export DB_PASSWORD=your_password
 export DB_NAME=order_management

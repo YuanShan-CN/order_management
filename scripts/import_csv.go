@@ -43,7 +43,7 @@ func main() {
 	csvPath := os.Args[1]
 
 	dbHost := getEnv("DB_HOST", "127.0.0.1")
-	dbPort := getEnv("DB_PORT", "3307")
+	dbPort := getEnv("DB_PORT", "3306")
 	dbUser := getEnv("DB_USER", "root")
 	dbPassword := getEnv("DB_PASSWORD", "")
 	dbName := getEnv("DB_NAME", "order_management")
@@ -85,23 +85,25 @@ func main() {
 			continue
 		}
 
-		if len(record) < 9 {
+		if len(record) < 6 {
 			continue
 		}
 
 		date := record[0]
-		location := record[1]
-		content := record[2]
-		fee, err := strconv.ParseFloat(record[3], 64)
+		shop := record[1]
+		location := record[2]
+		content := record[3]
+		fee, err := strconv.ParseFloat(record[4], 64)
 		if err != nil {
 			continue
 		}
-		settled := record[4] == "是"
-		shop := record[8]
+		settled := record[5] == "是"
 
 		if date == "" || shop == "" {
 			continue
 		}
+
+		date = date[:10]
 
 		createdAt, err := time.Parse("2006-01-02", date)
 		if err != nil {
