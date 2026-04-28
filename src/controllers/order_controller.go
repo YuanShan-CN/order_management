@@ -59,6 +59,16 @@ func getFieldName(field string) string {
 	}
 }
 
+// 提取日期的年月日部分
+func extractDatePart(date string) string {
+	// 如果是日期时间格式（如 2026-04-28T00:00:00+08:00），只保留前10个字符
+	if len(date) > 10 && (date[10] == 'T' || date[10] == ' ') {
+		return date[:10]
+	}
+	// 否则返回原日期
+	return date
+}
+
 func getUserID(c *gin.Context) uint {
 	userID, exists := c.Get("user_id")
 	if !exists {
@@ -339,7 +349,7 @@ func ExportOrdersCSV(c *gin.Context) {
 
 		row := []string{
 			strconv.Itoa(int(order.ID)),
-			order.Date,
+			extractDatePart(order.Date),
 			order.Location,
 			order.Content,
 			strconv.FormatFloat(order.Fee, 'f', 2, 64),
@@ -403,7 +413,7 @@ func ExportStatsCSV(c *gin.Context) {
 		}
 
 		row := []string{
-			order.Date,
+			extractDatePart(order.Date),
 			order.Shop,
 			order.Location,
 			order.Content,
@@ -436,12 +446,12 @@ func ImportOrdersCSV(c *gin.Context) {
 	reader := csv.NewReader(f)
 	records, err := reader.ReadAll()
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无法解析CSV文件"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("无法解析CSV文件: %v\n请确保文件是标准的CSV格式，使用英文逗号分隔", err)})
 		return
 	}
 
 	if len(records) < 2 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "CSV文件中没有数据"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "CSV文件中没有数据\n请确保文件包含表头行和至少一行数据"})
 		return
 	}
 
@@ -474,13 +484,40 @@ func ImportOrdersCSV(c *gin.Context) {
 
 	// 检查必要的列是否存在
 	if dateIdx == -1 || shopIdx == -1 || feeIdx == -1 || settledIdx == -1 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "CSV格式不正确，缺少必要的列（日期、店铺、费用、已结算）"})
+		var missingColumns []string
+		if dateIdx == -1 {
+			missingColumns = append(missingColumns, "日期")
+		}
+		if shopIdx == -1 {
+			missingColumns = append(missingColumns, "店铺")
+		}
+		if feeIdx == -1 {
+			missingColumns = append(missingColumns, "费用")
+		}
+		if settledIdx == -1 {
+			missingColumns = append(missingColumns, "已结算")
+		}
+
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": fmt.Sprintf("CSV格式不正确，缺少必要的列：%s\n期望的CSV格式示例：\n日期,店铺,地点,内容,费用,已结算\n2026-04-29,示例店,北京,购买商品,100.00,否",
+				strings.Join(missingColumns, "、"))})
 		return
 	}
 
 	var importedCount int
 	var failedCount int
+	var newShopCount int
 	var errors []string
+
+	// 使用map缓存已查询的shop，避免重复查询
+	shopCache := make(map[string]bool)
+
+	// 先查询该用户已有的所有shop，缓存到map中
+	var existingShops []models.Shop
+	database.DB.Where("user_id = ?", userID).Find(&existingShops)
+	for _, s := range existingShops {
+		shopCache[s.Name] = true
+	}
 
 	for i, record := range records {
 		if i == 0 {
@@ -489,7 +526,7 @@ func ImportOrdersCSV(c *gin.Context) {
 
 		if len(record) <= dateIdx || len(record) <= shopIdx || len(record) <= feeIdx || len(record) <= settledIdx {
 			failedCount++
-			errors = append(errors, fmt.Sprintf("第%d行: 数据列数不足", i+1))
+			errors = append(errors, fmt.Sprintf("第%d行: 数据列数不足，请确保包含所有必要的列（日期、店铺、费用、已结算）", i+1))
 			continue
 		}
 
@@ -508,7 +545,7 @@ func ImportOrdersCSV(c *gin.Context) {
 
 		if date == "" || shop == "" {
 			failedCount++
-			errors = append(errors, fmt.Sprintf("第%d行: 日期或店铺不能为空", i+1))
+			errors = append(errors, fmt.Sprintf("第%d行: 日期或店铺不能为空，请填写完整信息", i+1))
 			continue
 		}
 
@@ -520,11 +557,40 @@ func ImportOrdersCSV(c *gin.Context) {
 		fee, err := strconv.ParseFloat(feeStr, 64)
 		if err != nil {
 			failedCount++
-			errors = append(errors, fmt.Sprintf("第%d行: 费用格式不正确", i+1))
+			errors = append(errors, fmt.Sprintf("第%d行: 费用格式不正确，请填写数字（例如：100.00）", i+1))
 			continue
 		}
 
 		settled := settledStr == "是" || settledStr == "true" || settledStr == "1"
+
+		// 检查并自动创建shop（使用缓存map）
+		if !shopCache[shop] {
+			// 缓存中不存在，检查数据库
+			var existingShop models.Shop
+			result := database.DB.Where("name = ? AND user_id = ?", shop, userID).First(&existingShop)
+			if result.Error == gorm.ErrRecordNotFound {
+				// 数据库中也不存在，创建新shop
+				newShop := models.Shop{
+					UserID: userID,
+					Name:   shop,
+				}
+				if err := database.DB.Create(&newShop).Error; err != nil {
+					failedCount++
+					errors = append(errors, fmt.Sprintf("第%d行: 创建店铺失败 - %v", i+1, err))
+					continue
+				}
+				// 将新创建的shop加入缓存，并增加计数
+				shopCache[shop] = true
+				newShopCount++
+			} else if result.Error != nil {
+				failedCount++
+				errors = append(errors, fmt.Sprintf("第%d行: 检查店铺失败 - %v", i+1, result.Error))
+				continue
+			} else {
+				// 数据库中存在但缓存中没有，加入缓存
+				shopCache[shop] = true
+			}
+		}
 
 		order := models.Order{
 			UserID:   userID,
@@ -545,10 +611,16 @@ func ImportOrdersCSV(c *gin.Context) {
 		importedCount++
 	}
 
+	message := fmt.Sprintf("成功导入 %d 条数据，失败 %d 条", importedCount, failedCount)
+	if newShopCount > 0 {
+		message = fmt.Sprintf("%s，新建 %d 个店铺", message, newShopCount)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"importedCount": importedCount,
 		"failedCount":   failedCount,
+		"newShopCount":  newShopCount,
 		"errors":        errors,
-		"message":       fmt.Sprintf("成功导入 %d 条数据，失败 %d 条", importedCount, failedCount),
+		"message":       message,
 	})
 }

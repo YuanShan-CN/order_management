@@ -366,7 +366,23 @@
                 body: formData
             });
             
-            const result = await response.json();
+            // 尝试解析 JSON，如果失败则返回错误信息
+            let result;
+            try {
+                result = await response.json();
+            } catch (e) {
+                // 如果解析 JSON 失败，尝试获取文本
+                const text = await response.text();
+                result = {
+                    error: text || `HTTP ${response.status}: ${response.statusText}`
+                };
+            }
+            
+            // 如果 HTTP 状态码不是 200，确保返回错误信息
+            if (!response.ok && !result.error) {
+                result.error = `HTTP ${response.status}: ${response.statusText}`;
+            }
+            
             return result;
         }
         let editingId = null;
@@ -757,11 +773,44 @@
                 const importResult = document.getElementById('importResult');
                 importResult.style.display = 'block';
 
-                if (result.importedCount > 0) {
-                    importResult.innerHTML = `
+                // 优先检查是否有 error
+                if (result.error) {
+                    let errorHtml = `
+                        <div style="padding: 10px; background: #FFEBEE; border-radius: 4px; color: #C62828;">
+                            <pre style="white-space: pre-wrap; margin: 0; font-size: 14px;">${result.error}</pre>
+                        </div>
+                    `;
+                    importResult.innerHTML = errorHtml;
+                    importBtn.disabled = false;
+                    importBtn.textContent = '重试';
+                } else if (result.importedCount > 0) {
+                    let successHtml = `
                         <div style="padding: 10px; background: #E8F5E9; border-radius: 4px; color: #2E7D32; margin-bottom: 10px;">
                             ${result.message}
                         </div>
+                    `;
+                    
+                    if (result.newShopCount > 0) {
+                        successHtml += `
+                            <div style="padding: 10px; background: #E3F2FD; border-radius: 4px; color: #1565C0; margin-bottom: 10px;">
+                                🏪 新建 ${result.newShopCount} 个店铺
+                            </div>
+                        `;
+                    }
+                    
+                    if (result.failedCount > 0 && result.errors) {
+                        successHtml += `
+                            <div style="padding: 10px; background: #FFEBEE; border-radius: 4px; color: #C62828; max-height: 200px; overflow-y: auto; margin-bottom: 10px;">
+                                <strong>失败详情：</strong>
+                                <ul style="margin: 5px 0 0 20px;">
+                                    ${result.errors.slice(0, 10).map(err => `<li>${err}</li>`).join('')}
+                                    ${result.errors.length > 10 ? `<li>... 还有 ${result.errors.length - 10} 条错误</li>` : ''}
+                                </ul>
+                            </div>
+                        `;
+                    }
+                    
+                    successHtml += `
                         <div style="margin-top: 10px;">
                             <button type="button" class="btn" style="background: #2196F3; color: white; margin-right: 10px;" onclick="resetImportForm()">
                                 重新导入
@@ -771,35 +820,16 @@
                             </button>
                         </div>
                     `;
-                    if (result.failedCount > 0 && result.errors) {
-                        importResult.innerHTML = `
-                            <div style="padding: 10px; background: #E8F5E9; border-radius: 4px; color: #2E7D32; margin-bottom: 10px;">
-                                ${result.message}
-                            </div>
-                            <div style="padding: 10px; background: #FFEBEE; border-radius: 4px; color: #C62828; max-height: 200px; overflow-y: auto; margin-bottom: 10px;">
-                                <strong>失败详情：</strong>
-                                <ul style="margin: 5px 0 0 20px;">
-                                    ${result.errors.slice(0, 10).map(err => `<li>${err}</li>`).join('')}
-                                    ${result.errors.length > 10 ? `<li>... 还有 ${result.errors.length - 10} 条错误</li>` : ''}
-                                </ul>
-                            </div>
-                            <div style="margin-top: 10px;">
-                                <button type="button" class="btn" style="background: #2196F3; color: white; margin-right: 10px;" onclick="resetImportForm()">
-                                    重新导入
-                                </button>
-                                <button type="button" class="btn" style="background: #9E9E9E; color: white;" onclick="closeImportModal()">
-                                    关闭
-                                </button>
-                            </div>
-                        `;
-                    }
+                    
+                    importResult.innerHTML = successHtml;
                     loadOrders();
                     loadShops(); // 刷新店铺列表
                     
                     // 隐藏原来的提交按钮
                     importBtn.style.display = 'none';
                 } else {
-                    importResult.innerHTML = `
+                    // 既没有 error，也没有 importedCount，显示通用错误
+                    let errorHtml = `
                         <div style="padding: 10px; background: #FFEBEE; border-radius: 4px; color: #C62828;">
                             ${result.message || '导入失败'}
                             ${result.errors && result.errors.length > 0 ? `
@@ -809,7 +839,7 @@
                             ` : ''}
                         </div>
                     `;
-                    // 失败时可以重新导入
+                    importResult.innerHTML = errorHtml;
                     importBtn.disabled = false;
                     importBtn.textContent = '重试';
                 }
