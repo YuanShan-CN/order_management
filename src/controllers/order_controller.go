@@ -416,3 +416,139 @@ func ExportStatsCSV(c *gin.Context) {
 		}
 	}
 }
+
+func ImportOrdersCSV(c *gin.Context) {
+	userID := getUserID(c)
+
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "未上传文件"})
+		return
+	}
+
+	f, err := file.Open()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "无法打开文件"})
+		return
+	}
+	defer f.Close()
+
+	reader := csv.NewReader(f)
+	records, err := reader.ReadAll()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无法解析CSV文件"})
+		return
+	}
+
+	if len(records) < 2 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "CSV文件中没有数据"})
+		return
+	}
+
+	// 分析表头，确定列的位置
+	header := records[0]
+	dateIdx := -1
+	shopIdx := -1
+	locationIdx := -1
+	contentIdx := -1
+	feeIdx := -1
+	settledIdx := -1
+
+	for i, col := range header {
+		col = strings.TrimSpace(col)
+		switch col {
+		case "日期":
+			dateIdx = i
+		case "店铺":
+			shopIdx = i
+		case "地点":
+			locationIdx = i
+		case "内容":
+			contentIdx = i
+		case "费用":
+			feeIdx = i
+		case "已结算":
+			settledIdx = i
+		}
+	}
+
+	// 检查必要的列是否存在
+	if dateIdx == -1 || shopIdx == -1 || feeIdx == -1 || settledIdx == -1 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "CSV格式不正确，缺少必要的列（日期、店铺、费用、已结算）"})
+		return
+	}
+
+	var importedCount int
+	var failedCount int
+	var errors []string
+
+	for i, record := range records {
+		if i == 0 {
+			continue
+		}
+
+		if len(record) <= dateIdx || len(record) <= shopIdx || len(record) <= feeIdx || len(record) <= settledIdx {
+			failedCount++
+			errors = append(errors, fmt.Sprintf("第%d行: 数据列数不足", i+1))
+			continue
+		}
+
+		date := strings.TrimSpace(record[dateIdx])
+		shop := strings.TrimSpace(record[shopIdx])
+		feeStr := strings.TrimSpace(record[feeIdx])
+		settledStr := strings.TrimSpace(record[settledIdx])
+
+		var location, content string
+		if locationIdx != -1 && len(record) > locationIdx {
+			location = strings.TrimSpace(record[locationIdx])
+		}
+		if contentIdx != -1 && len(record) > contentIdx {
+			content = strings.TrimSpace(record[contentIdx])
+		}
+
+		if date == "" || shop == "" {
+			failedCount++
+			errors = append(errors, fmt.Sprintf("第%d行: 日期或店铺不能为空", i+1))
+			continue
+		}
+
+		// 处理日期格式：支持 2026-04-28T00:00:00+08:00 和 2026-04-28
+		if len(date) > 10 && (date[10] == 'T' || date[10] == ' ') {
+			date = date[:10]
+		}
+
+		fee, err := strconv.ParseFloat(feeStr, 64)
+		if err != nil {
+			failedCount++
+			errors = append(errors, fmt.Sprintf("第%d行: 费用格式不正确", i+1))
+			continue
+		}
+
+		settled := settledStr == "是" || settledStr == "true" || settledStr == "1"
+
+		order := models.Order{
+			UserID:   userID,
+			Date:     date,
+			Location: location,
+			Content:  content,
+			Fee:      fee,
+			Settled:  settled,
+			Shop:     shop,
+		}
+
+		if err := database.DB.Create(&order).Error; err != nil {
+			failedCount++
+			errors = append(errors, fmt.Sprintf("第%d行: 导入失败 - %v", i+1, err))
+			continue
+		}
+
+		importedCount++
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"importedCount": importedCount,
+		"failedCount":   failedCount,
+		"errors":        errors,
+		"message":       fmt.Sprintf("成功导入 %d 条数据，失败 %d 条", importedCount, failedCount),
+	})
+}

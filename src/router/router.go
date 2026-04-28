@@ -28,6 +28,7 @@ func Setup() *gin.Engine {
 		authGroup.GET("/orders", controllers.GetOrders)
 		authGroup.GET("/orders/export", controllers.ExportOrdersCSV)
 		authGroup.GET("/orders/stats/export", controllers.ExportStatsCSV)
+		authGroup.POST("/orders/import", controllers.ImportOrdersCSV)
 		authGroup.GET("/orders/:id", controllers.GetOrder)
 		authGroup.POST("/orders", controllers.CreateOrder)
 		authGroup.PUT("/orders/:id", controllers.UpdateOrder)

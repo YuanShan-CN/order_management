@@ -174,8 +174,9 @@
                     <option value="settled">已结算</option>
                     <option value="unsettled">未结算</option>
                 </select>
-                <button class="btn" style="background: #FF9800; color: white; margin-left: auto;" onclick="exportCSV()">📥 导出CSV</button>
-                <button class="btn btn-primary" onclick="toggleCollapse()">添加新订单</button>
+                <button class="btn" style="background: #9C27B0; color: white; margin-left: auto;" onclick="openImportModal()">📤 导入CSV</button>
+		<button class="btn" style="background: #FF9800; color: white;" onclick="exportCSV()">📥 导出CSV</button>
+		<button class="btn btn-primary" onclick="toggleCollapse()">添加新订单</button>
             </div>
 
             <div class="collapse-header" onclick="toggleCollapse()">
@@ -299,9 +300,69 @@
         </div>
     </div>
 
+    <div class="modal" id="importModal">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <span class="close-modal" onclick="closeImportModal()">&times;</span>
+            <h3>导入CSV</h3>
+            <form id="importForm">
+                <div class="form-group">
+                    <label>选择CSV文件</label>
+                    <input type="file" id="csvFile" accept=".csv" required>
+                </div>
+                <div class="form-group" style="margin-top: 10px;">
+                    <p style="font-size: 12px; color: #666; margin-bottom: 5px;">CSV格式要求：</p>
+                    <ul style="font-size: 12px; color: #666; padding-left: 20px; margin: 0;">
+                        <li>必须包含列：日期、店铺、费用、已结算</li>
+                        <li>可选列：地点、内容</li>
+                        <li>已结算列填写"是"/"否" 或 "true"/"false" 或 "1"/"0"</li>
+                        <li>日期格式：YYYY-MM-DD 或 YYYY-MM-DDTHH:MM:SS±HH:MM</li>
+                        <li>支持导出的 orders.csv 和 stats.csv 格式</li>
+                    </ul>
+                </div>
+                <div id="importResult" style="margin-top: 15px; display: none;">
+                </div>
+                <button type="submit" class="btn btn-primary" id="importBtn">导入</button>
+            </form>
+        </div>
+    </div>
+
     <script>
         const API_URL = '/api/orders';
         const SHOP_API_URL = '/api/shops';
+        
+        function openImportModal() {
+            document.getElementById('importModal').style.display = 'flex';
+            document.getElementById('importForm').reset();
+            document.getElementById('importResult').style.display = 'none';
+            document.getElementById('importResult').innerHTML = '';
+            document.getElementById('importBtn').disabled = false;
+        }
+        
+        function closeImportModal() {
+            document.getElementById('importModal').style.display = 'none';
+        }
+        
+        async function importCSV(file) {
+            const token = getToken();
+            if (!token) {
+                window.location.href = '/login';
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            const response = await fetch(`${API_URL}/import`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData
+            });
+            
+            const result = await response.json();
+            return result;
+        }
         let editingId = null;
         let shops = [];
         let currentPage = 1;
@@ -665,6 +726,72 @@
             }
             if (e.target === document.getElementById('editModal')) {
                 closeModal();
+            }
+            if (e.target === document.getElementById('importModal')) {
+                closeImportModal();
+            }
+        });
+        
+        document.getElementById('importForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fileInput = document.getElementById('csvFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('请选择文件');
+                return;
+            }
+            
+            const importBtn = document.getElementById('importBtn');
+            importBtn.disabled = true;
+            importBtn.textContent = '导入中...';
+            
+            try {
+                const result = await importCSV(file);
+                const importResult = document.getElementById('importResult');
+                importResult.style.display = 'block';
+                
+                if (result.importedCount > 0) {
+                    importResult.innerHTML = `
+                        <div style="padding: 10px; background: #E8F5E9; border-radius: 4px; color: #2E7D32; margin-bottom: 10px;">
+                            ${result.message}
+                        </div>
+                    `;
+                    if (result.failedCount > 0 && result.errors) {
+                        importResult.innerHTML += `
+                            <div style="padding: 10px; background: #FFEBEE; border-radius: 4px; color: #C62828; max-height: 200px; overflow-y: auto;">
+                                <strong>失败详情：</strong>
+                                <ul style="margin: 5px 0 0 20px;">
+                                    ${result.errors.slice(0, 10).map(err => `<li>${err}</li>`).join('')}
+                                    ${result.errors.length > 10 ? `<li>... 还有 ${result.errors.length - 10} 条错误</li>` : ''}
+                                </ul>
+                            </div>
+                        `;
+                    }
+                    loadOrders();
+                } else {
+                    importResult.innerHTML = `
+                        <div style="padding: 10px; background: #FFEBEE; border-radius: 4px; color: #C62828;">
+                            ${result.message || '导入失败'}
+                            ${result.errors && result.errors.length > 0 ? `
+                                <ul style="margin: 5px 0 0 20px;">
+                                    ${result.errors.slice(0, 10).map(err => `<li>${err}</li>`).join('')}
+                                </ul>
+                            ` : ''}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                const importResult = document.getElementById('importResult');
+                importResult.style.display = 'block';
+                importResult.innerHTML = `
+                    <div style="padding: 10px; background: #FFEBEE; border-radius: 4px; color: #C62828;">
+                        导入失败：${error.message}
+                    </div>
+                `;
+            } finally {
+                importBtn.disabled = false;
+                importBtn.textContent = '导入';
             }
         });
 
