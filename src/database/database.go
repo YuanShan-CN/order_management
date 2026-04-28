@@ -30,7 +30,7 @@ func Connect() error {
 	log.SetOutput(os.Stdout)
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 
-	err = DB.AutoMigrate(&models.Order{}, &models.Shop{})
+	err = DB.AutoMigrate(&models.Order{}, &models.Shop{}, &models.User{})
 	if err != nil {
 		return err
 	}

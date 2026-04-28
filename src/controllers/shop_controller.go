@@ -42,15 +42,17 @@ func getShopFieldName(field string) string {
 }
 
 func GetShops(c *gin.Context) {
+	userID := getUserID(c)
 	var shops []models.Shop
-	database.DB.Where("deleted_at IS NULL").Order("id DESC").Find(&shops)
+	database.DB.Where("deleted_at IS NULL AND user_id = ?", userID).Order("id DESC").Find(&shops)
 	c.JSON(http.StatusOK, shops)
 }
 
 func GetShop(c *gin.Context) {
+	userID := getUserID(c)
 	id := c.Param("id")
 	var shop models.Shop
-	if err := database.DB.First(&shop, id).Error; err != nil {
+	if err := database.DB.Where("id = ? AND user_id = ?", id, userID).First(&shop).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Shop not found"})
 			return
@@ -62,6 +64,7 @@ func GetShop(c *gin.Context) {
 }
 
 func CreateShop(c *gin.Context) {
+	userID := getUserID(c)
 	var shop models.Shop
 	if err := c.ShouldBindJSON(&shop); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -71,6 +74,7 @@ func CreateShop(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	shop.UserID = userID
 	if err := database.DB.Create(&shop).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -79,9 +83,10 @@ func CreateShop(c *gin.Context) {
 }
 
 func UpdateShop(c *gin.Context) {
+	userID := getUserID(c)
 	id := c.Param("id")
 	var shop models.Shop
-	if err := database.DB.First(&shop, id).Error; err != nil {
+	if err := database.DB.Where("id = ? AND user_id = ?", id, userID).First(&shop).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Shop not found"})
 			return
@@ -97,14 +102,16 @@ func UpdateShop(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	shop.UserID = userID
 	database.DB.Save(&shop)
 	c.JSON(http.StatusOK, shop)
 }
 
 func DeleteShop(c *gin.Context) {
+	userID := getUserID(c)
 	id := c.Param("id")
 	var shop models.Shop
-	if err := database.DB.Where("deleted_at IS NULL").First(&shop, id).Error; err != nil {
+	if err := database.DB.Where("deleted_at IS NULL AND id = ? AND user_id = ?", id, userID).First(&shop).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Shop not found"})
 			return
@@ -117,15 +124,17 @@ func DeleteShop(c *gin.Context) {
 }
 
 func GetDeletedShops(c *gin.Context) {
+	userID := getUserID(c)
 	var shops []models.Shop
-	database.DB.Unscoped().Where("deleted_at IS NOT NULL").Find(&shops)
+	database.DB.Unscoped().Where("deleted_at IS NOT NULL AND user_id = ?", userID).Find(&shops)
 	c.JSON(http.StatusOK, shops)
 }
 
 func RestoreShop(c *gin.Context) {
+	userID := getUserID(c)
 	id := c.Param("id")
 	var shop models.Shop
-	if err := database.DB.Unscoped().Where("deleted_at IS NOT NULL").First(&shop, id).Error; err != nil {
+	if err := database.DB.Unscoped().Where("deleted_at IS NOT NULL AND id = ? AND user_id = ?", id, userID).First(&shop).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Shop not found in trash"})
 			return
@@ -138,9 +147,10 @@ func RestoreShop(c *gin.Context) {
 }
 
 func ForceDeleteShop(c *gin.Context) {
+	userID := getUserID(c)
 	id := c.Param("id")
 	var shop models.Shop
-	if err := database.DB.Unscoped().Where("deleted_at IS NOT NULL").First(&shop, id).Error; err != nil {
+	if err := database.DB.Unscoped().Where("deleted_at IS NOT NULL AND id = ? AND user_id = ?", id, userID).First(&shop).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Shop not found in trash"})
 			return

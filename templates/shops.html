@@ -122,8 +122,35 @@
         const API_URL = '/api/shops';
         let editingId = null;
 
+        function getToken() {
+            return localStorage.getItem('token');
+        }
+
+        async function authFetch(url, options = {}) {
+            const token = getToken();
+            if (!token) {
+                window.location.href = '/login';
+                throw new Error('Not authenticated');
+            }
+            
+            options.headers = options.headers || {};
+            options.headers['Authorization'] = `Bearer ${token}`;
+            
+            const response = await fetch(url, options);
+            
+            if (response.status === 401) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user_id');
+                localStorage.removeItem('username');
+                window.location.href = '/login';
+                throw new Error('Unauthorized');
+            }
+            
+            return response;
+        }
+
         async function loadShops() {
-            const response = await fetch(API_URL);
+            const response = await authFetch(API_URL);
             const shops = await response.json();
             renderShops(shops);
             updateCount(shops);
@@ -158,7 +185,7 @@
                 alert('请输入店铺名称');
                 return;
             }
-            await fetch(API_URL, {
+            await authFetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name })
@@ -186,7 +213,7 @@
                 alert('请输入店铺名称');
                 return;
             }
-            await fetch(`${API_URL}/${editingId}`, {
+            await authFetch(`${API_URL}/${editingId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name })
@@ -197,7 +224,7 @@
 
         async function deleteShop(id) {
             if (confirm('确定要删除这个店铺吗？')) {
-                await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+                await authFetch(`${API_URL}/${id}`, { method: 'DELETE' });
                 loadShops();
             }
         }

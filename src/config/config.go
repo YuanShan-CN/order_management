@@ -21,9 +21,15 @@ type ServerConfig struct {
 	Port int `yaml:"port"`
 }
 
+type JWTConfig struct {
+	Secret     string `yaml:"secret"`
+	ExpireHour int    `yaml:"expire_hour"`
+}
+
 type Config struct {
 	Database DatabaseConfig `yaml:"database"`
 	Server   ServerConfig   `yaml:"server"`
+	JWT      JWTConfig      `yaml:"jwt"`
 }
 
 var AppConfig Config

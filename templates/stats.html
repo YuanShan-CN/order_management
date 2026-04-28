@@ -238,7 +238,40 @@
         let detailsSortField = 'date';
         let detailsSortOrder = 'desc';
 
+        function getToken() {
+            return localStorage.getItem('token');
+        }
+
+        async function authFetch(url, options = {}) {
+            const token = getToken();
+            if (!token) {
+                window.location.href = '/login';
+                throw new Error('Not authenticated');
+            }
+            
+            options.headers = options.headers || {};
+            options.headers['Authorization'] = `Bearer ${token}`;
+            
+            const response = await fetch(url, options);
+            
+            if (response.status === 401) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user_id');
+                localStorage.removeItem('username');
+                window.location.href = '/login';
+                throw new Error('Unauthorized');
+            }
+            
+            return response;
+        }
+
         function exportStatsCSV() {
+            const token = getToken();
+            if (!token) {
+                window.location.href = '/login';
+                return;
+            }
+            
             const year = document.getElementById('yearSelect').value;
             const month = document.getElementById('monthSelect').value;
             const settled = document.getElementById('settledSelect').value;
@@ -258,7 +291,11 @@
                 url += `shop=${encodeURIComponent(shop)}&`;
             }
             
-            window.location.href = url;
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'stats.csv');
+            link.setAttribute('target', '_blank');
+            link.click();
         }
 
         async function loadStats() {
@@ -292,12 +329,12 @@
                 filterUrl += `&shop=${encodeURIComponent(shop)}`;
             }
             
-            const summaryResponse = await fetch(summaryUrl);
+            const summaryResponse = await authFetch(summaryUrl);
             const summaryResult = await summaryResponse.json();
             const summaryOrders = summaryResult.orders || summaryResult;
             updateSummary(summaryOrders);
             
-            const filterResponse = await fetch(filterUrl);
+            const filterResponse = await authFetch(filterUrl);
             const filterResult = await filterResponse.json();
             const filteredOrders = filterResult.orders || filterResult;
             
@@ -710,7 +747,7 @@
         }
 
         async function loadShops() {
-            const response = await fetch(SHOP_API_URL);
+            const response = await authFetch(SHOP_API_URL);
             const shops = await response.json();
             const select = document.getElementById('shopSelect');
             select.innerHTML = '<option value="all">全部店铺</option>';
