@@ -8,7 +8,7 @@
 - **店铺维护** - 店铺信息管理，支持回收站功能
 - **收入统计** - 多维度数据统计，支持表格、条形图、饼图展示
 - **回收站** - 支持订单和店铺的软删除与恢复
-- **数据导入** - 支持 CSV 文件批量导入订单数据
+- **数据导入** - 支持 CSV 文件批量导入订单数据，自动创建缺失的店铺
 - **数据导出** - 支持将订单数据导出为 CSV 文件
 - **多用户支持** - 用户登录、数据隔离、密码管理
 - **JWT 认证** - 安全的 token 认证机制
@@ -53,14 +53,10 @@ sleep 5
 docker exec -it order_management_app ./init_user -username admin -password your_password
 
 # 7. 导入订单数据 (可选)
-# 先将 CSV 文件复制到容器内，然后导入
-docker cp /path/to/stats.csv order_management_app:/tmp/stats.csv
-docker exec -it order_management_app ./import_csv -user_id 1 /tmp/stats.csv
+# 登录系统后，在订单管理页面点击"📤 导入CSV"按钮
+# 支持 orders.csv 和 stats.csv 两种格式
 
-# 8. 填充店铺数据 (可选，需先导入订单)
-docker exec -it order_management_app ./fill_shops -user_id 1
-
-# 9. 访问系统
+# 8. 访问系统
 # 登录页面: http://localhost:8081/login
 # 数据库端口: 3306
 ```
@@ -188,6 +184,20 @@ jwt:
 
 ### 导入 CSV 订单数据
 
+**通过前端页面导入（推荐）：**
+- 登录后访问订单管理页面 (`/orders`)
+- 点击紫色的 **📤 导入CSV** 按钮
+- 选择 CSV 文件并提交
+- 系统会自动创建缺失的店铺
+
+**CSV 格式要求：**
+- 必须包含列：日期、店铺、费用、已结算
+- 可选列：地点、内容
+- 已结算列填写"是"/"否" 或 "true"/"false" 或 "1"/"0"
+- 日期格式：YYYY-MM-DD 或 YYYY-MM-DDTHH:MM:SS±HH:MM
+- 支持导出的 orders.csv 和 stats.csv 格式
+
+**命令行导入（备用）：**
 ```bash
 # 设置环境变量
 export DB_PASSWORD=your_password
@@ -195,14 +205,6 @@ export DB_PASSWORD=your_password
 # 运行导入脚本
 cd scripts
 go run import_csv.go /path/to/orders.csv
-```
-
-### 填充店铺数据
-
-```bash
-# 从订单表提取商家名称填充店铺表
-cd scripts
-go run fill_shops.go
 ```
 
 ## 📤 数据导出
