@@ -126,7 +126,8 @@
                     <option value="settled">已结算</option>
                     <option value="unsettled">未结算</option>
                 </select>
-                <button class="btn btn-primary add-btn" onclick="toggleCollapse()">添加新订单</button>
+                <button class="btn" style="background: #FF9800; color: white; margin-left: auto;" onclick="exportCSV()">📥 导出CSV</button>
+                <button class="btn btn-primary" onclick="toggleCollapse()">添加新订单</button>
             </div>
 
             <div class="collapse-header" onclick="toggleCollapse()">
@@ -259,6 +260,14 @@
         let sortBy = 'date_desc';
         let settledFilter = 'all';
         const pageSize = 15;
+
+        function exportCSV() {
+            let url = `${API_URL}/export?sort=${sortBy}&settled=${settledFilter}`;
+            if (searchKeyword) {
+                url += `&search=${encodeURIComponent(searchKeyword)}`;
+            }
+            window.location.href = url;
+        }
 
         async function loadOrders() {
             let url = `${API_URL}?page=${currentPage}&size=${pageSize}&sort=${sortBy}&settled=${settledFilter}`;

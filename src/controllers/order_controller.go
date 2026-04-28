@@ -1,14 +1,15 @@
 package controllers
 
 import (
+	"encoding/csv"
 	"errors"
 	"net/http"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 	"github.com/YuanShan-CN/order_management/src/database"
 	"github.com/YuanShan-CN/order_management/src/models"
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 func GetOrders(c *gin.Context) {
@@ -25,7 +26,7 @@ func GetOrders(c *gin.Context) {
 	shop := c.Query("shop")
 
 	if search != "" {
-		db = db.Where("location LIKE ? OR content LIKE ? OR shop LIKE ?", 
+		db = db.Where("location LIKE ? OR content LIKE ? OR shop LIKE ?",
 			"%"+search+"%", "%"+search+"%", "%"+search+"%")
 	}
 
@@ -67,11 +68,11 @@ func GetOrders(c *gin.Context) {
 	totalPages := (int(total) + pageSize - 1) / pageSize
 
 	c.JSON(http.StatusOK, gin.H{
-		"orders":       orders,
-		"currentPage":  page,
-		"totalPages":   totalPages,
-		"totalOrders":  total,
-		"pageSize":     pageSize,
+		"orders":      orders,
+		"currentPage": page,
+		"totalPages":  totalPages,
+		"totalOrders": total,
+		"pageSize":    pageSize,
 	})
 }
 
@@ -146,7 +147,7 @@ func GetDeletedOrders(c *gin.Context) {
 	sort := c.DefaultQuery("sort", "deleted_at_desc")
 
 	if search != "" {
-		db = db.Where("location LIKE ? OR content LIKE ? OR shop LIKE ?", 
+		db = db.Where("location LIKE ? OR content LIKE ? OR shop LIKE ?",
 			"%"+search+"%", "%"+search+"%", "%"+search+"%")
 	}
 
@@ -170,11 +171,11 @@ func GetDeletedOrders(c *gin.Context) {
 	totalPages := (int(total) + pageSize - 1) / pageSize
 
 	c.JSON(http.StatusOK, gin.H{
-		"orders":       orders,
-		"currentPage":  page,
-		"totalPages":   totalPages,
-		"totalOrders":  total,
-		"pageSize":     pageSize,
+		"orders":      orders,
+		"currentPage": page,
+		"totalPages":  totalPages,
+		"totalOrders": total,
+		"pageSize":    pageSize,
 	})
 }
 
@@ -206,4 +207,137 @@ func ForceDeleteOrder(c *gin.Context) {
 	}
 	database.DB.Unscoped().Delete(&order)
 	c.JSON(http.StatusOK, gin.H{"message": "Order permanently deleted successfully"})
+}
+
+func ExportOrdersCSV(c *gin.Context) {
+	var orders []models.Order
+	db := database.DB.Where("deleted_at IS NULL")
+
+	search := c.Query("search")
+	settled := c.Query("settled")
+	year := c.Query("year")
+	month := c.Query("month")
+	shop := c.Query("shop")
+
+	if search != "" {
+		db = db.Where("location LIKE ? OR content LIKE ? OR shop LIKE ?",
+			"%"+search+"%", "%"+search+"%", "%"+search+"%")
+	}
+
+	if settled == "settled" {
+		db = db.Where("settled = ?", true)
+	} else if settled == "unsettled" {
+		db = db.Where("settled = ?", false)
+	}
+
+	if year != "" && year != "all" {
+		db = db.Where("YEAR(date) = ?", year)
+	}
+
+	if month != "" && month != "all" {
+		db = db.Where("MONTH(date) = ?", month)
+	}
+
+	if shop != "" && shop != "all" {
+		db = db.Where("shop = ?", shop)
+	}
+
+	db.Order("date DESC").Find(&orders)
+
+	c.Header("Content-Type", "text/csv")
+	c.Header("Content-Disposition", "attachment; filename=orders.csv")
+	c.Header("Content-Transfer-Encoding", "binary")
+
+	writer := csv.NewWriter(c.Writer)
+	defer writer.Flush()
+
+	headers := []string{"ID", "日期", "地点", "内容", "费用", "已结算", "店铺"}
+	if err := writer.Write(headers); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to write CSV headers"})
+		return
+	}
+
+	for _, order := range orders {
+		settledStr := "否"
+		if order.Settled {
+			settledStr = "是"
+		}
+
+		row := []string{
+			strconv.Itoa(int(order.ID)),
+			order.Date,
+			order.Location,
+			order.Content,
+			strconv.FormatFloat(order.Fee, 'f', 2, 64),
+			settledStr,
+			order.Shop,
+		}
+		if err := writer.Write(row); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to write CSV row"})
+			return
+		}
+	}
+}
+
+func ExportStatsCSV(c *gin.Context) {
+	var orders []models.Order
+	db := database.DB.Where("deleted_at IS NULL")
+
+	year := c.Query("year")
+	month := c.Query("month")
+	settled := c.Query("settled")
+	shop := c.Query("shop")
+
+	if year != "" && year != "all" {
+		db = db.Where("YEAR(date) = ?", year)
+	}
+
+	if month != "" && month != "all" {
+		db = db.Where("MONTH(date) = ?", month)
+	}
+
+	if settled == "settled" {
+		db = db.Where("settled = ?", true)
+	} else if settled == "unsettled" {
+		db = db.Where("settled = ?", false)
+	}
+
+	if shop != "" && shop != "all" {
+		db = db.Where("shop = ?", shop)
+	}
+
+	db.Order("date DESC").Find(&orders)
+
+	c.Header("Content-Type", "text/csv")
+	c.Header("Content-Disposition", "attachment; filename=stats.csv")
+	c.Header("Content-Transfer-Encoding", "binary")
+
+	writer := csv.NewWriter(c.Writer)
+	defer writer.Flush()
+
+	headers := []string{"日期", "店铺", "地点", "内容", "费用", "已结算"}
+	if err := writer.Write(headers); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to write CSV headers"})
+		return
+	}
+
+	for _, order := range orders {
+		settledStr := "否"
+		if order.Settled {
+			settledStr = "是"
+		}
+
+		row := []string{
+			order.Date,
+			order.Shop,
+			order.Location,
+			order.Content,
+			strconv.FormatFloat(order.Fee, 'f', 2, 64),
+			settledStr,
+		}
+		if err := writer.Write(row); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to write CSV row"})
+			return
+		}
+	}
 }

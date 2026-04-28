@@ -3,11 +3,11 @@ package router
 import (
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"github.com/YuanShan-CN/order_management/src/controllers"
 	"github.com/YuanShan-CN/order_management/src/database"
 	"github.com/YuanShan-CN/order_management/src/middleware"
 	"github.com/YuanShan-CN/order_management/src/models"
+	"github.com/gin-gonic/gin"
 )
 
 func Setup() *gin.Engine {
@@ -16,6 +16,8 @@ func Setup() *gin.Engine {
 	r.Use(middleware.CORS())
 
 	r.GET("/api/orders", controllers.GetOrders)
+	r.GET("/api/orders/export", controllers.ExportOrdersCSV)
+	r.GET("/api/orders/stats/export", controllers.ExportStatsCSV)
 	r.GET("/api/orders/:id", controllers.GetOrder)
 	r.POST("/api/orders", controllers.CreateOrder)
 	r.PUT("/api/orders/:id", controllers.UpdateOrder)

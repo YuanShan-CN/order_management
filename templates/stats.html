@@ -149,6 +149,7 @@
                     </select>
                 </div>
                 <button class="btn btn-primary" onclick="loadStats()">查询</button>
+                <button class="btn" style="background: #FF9800; color: white;" onclick="exportStatsCSV()">📥 导出CSV</button>
             </div>
 
             <div class="stats-grid">
@@ -221,6 +222,29 @@
         let expandedShop = null;
         let detailsSortField = 'date';
         let detailsSortOrder = 'desc';
+
+        function exportStatsCSV() {
+            const year = document.getElementById('yearSelect').value;
+            const month = document.getElementById('monthSelect').value;
+            const settled = document.getElementById('settledSelect').value;
+            const shop = document.getElementById('shopSelect').value;
+            
+            let url = `${API_URL}/stats/export?`;
+            if (year !== 'all') {
+                url += `year=${year}&`;
+            }
+            if (month !== 'all') {
+                url += `month=${month}&`;
+            }
+            if (settled !== 'all') {
+                url += `settled=${settled}&`;
+            }
+            if (shop !== 'all') {
+                url += `shop=${encodeURIComponent(shop)}&`;
+            }
+            
+            window.location.href = url;
+        }
 
         async function loadStats() {
             const year = document.getElementById('yearSelect').value;
