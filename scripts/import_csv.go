@@ -5,19 +5,22 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
 type Order struct {
-	ID        uint    `gorm:"primary_key"`
-	Date      string  `gorm:"type:date;not null"`
-	Location  string  `gorm:"type:varchar(200)"`
-	Content   string  `gorm:"type:text"`
-	Fee       float64 `gorm:"type:decimal(10,2)"`
-	Settled   bool    `gorm:"default:false"`
-	Shop      string  `gorm:"type:varchar(100)"`
+	ID        uint      `gorm:"primary_key"`
+	Date      string    `gorm:"type:date;not null"`
+	Location  string    `gorm:"type:varchar(200)"`
+	Content   string    `gorm:"type:text"`
+	Fee       float64   `gorm:"type:decimal(10,2)"`
+	Settled   bool      `gorm:"default:false"`
+	Shop      string    `gorm:"type:varchar(100)"`
+	CreatedAt time.Time `gorm:"type:datetime"`
+	UpdatedAt time.Time `gorm:"type:datetime"`
 }
 
 func (Order) TableName() string {
@@ -100,13 +103,20 @@ func main() {
 			continue
 		}
 
+		createdAt, err := time.Parse("2006-01-02", date)
+		if err != nil {
+			createdAt = time.Now()
+		}
+
 		orders = append(orders, Order{
-			Date:     date,
-			Location: location,
-			Content:  content,
-			Fee:      fee,
-			Settled:  settled,
-			Shop:     shop,
+			Date:      date,
+			Location:  location,
+			Content:   content,
+			Fee:       fee,
+			Settled:   settled,
+			Shop:      shop,
+			CreatedAt: createdAt,
+			UpdatedAt: createdAt,
 		})
 	}
 

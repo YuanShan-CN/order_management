@@ -140,35 +140,35 @@
                     <form id="orderForm">
                         <div class="form-row">
                             <div class="form-group">
-                                <label>日期</label>
+                                <label>日期 <span style="color: #f44336;">*</span></label>
                                 <input type="text" id="date" required placeholder="YYYY-MM-DD">
                             </div>
                             <div class="form-group">
-                                <label>地点</label>
-                                <input type="text" id="location" placeholder="拍摄地点">
+                                <label>地点 <span style="color: #f44336;">*</span></label>
+                                <input type="text" id="location" required placeholder="拍摄地点">
                             </div>
                             <div class="form-group">
-                                <label>费用</label>
+                                <label>费用 <span style="color: #f44336;">*</span></label>
                                 <input type="number" id="fee" step="0.01" placeholder="拍摄费用" required>
                             </div>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label>内容</label>
-                                <textarea id="content" placeholder="拍摄内容描述"></textarea>
+                                <label>内容 <span style="color: #f44336;">*</span></label>
+                                <textarea id="content" required placeholder="拍摄内容描述"></textarea>
                             </div>
                             <div class="form-group">
-                                <label>店铺</label>
-                                <select id="shop">
+                                <label>店铺 <span style="color: #f44336;">*</span></label>
+                                <select id="shop" required>
                                     <option value="">请选择店铺</option>
                                 </select>
                             </div>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label>结算</label>
-                                <select id="settled">
-                                    <option value="false">否</option>
+                                <label>结算 <span style="color: #f44336;">*</span></label>
+                                <select id="settled" required>
+                                    <option value="false" selected>否</option>
                                     <option value="true">是</option>
                                 </select>
                             </div>
@@ -204,41 +204,41 @@
     </div>
 
     <div class="modal" id="editModal">
-        <div class="modal-content">
+        <div class="modal-content" onclick="event.stopPropagation()">
             <span class="close-modal" onclick="closeModal()">&times;</span>
             <h3>编辑订单</h3>
             <form id="editForm">
                 <input type="hidden" id="editId">
                 <div class="form-row">
                     <div class="form-group">
-                        <label>日期</label>
+                        <label>日期 <span style="color: #f44336;">*</span></label>
                         <input type="text" id="editDate" required placeholder="YYYY-MM-DD">
                     </div>
                     <div class="form-group">
-                        <label>地点</label>
-                        <input type="text" id="editLocation">
+                        <label>地点 <span style="color: #f44336;">*</span></label>
+                        <input type="text" id="editLocation" required>
                     </div>
                     <div class="form-group">
-                        <label>费用</label>
+                        <label>费用 <span style="color: #f44336;">*</span></label>
                         <input type="number" id="editFee" step="0.01" required>
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>内容</label>
-                        <textarea id="editContent"></textarea>
+                        <label>内容 <span style="color: #f44336;">*</span></label>
+                        <textarea id="editContent" required></textarea>
                     </div>
                     <div class="form-group">
-                        <label>店铺</label>
-                        <select id="editShop">
+                        <label>店铺 <span style="color: #f44336;">*</span></label>
+                        <select id="editShop" required>
                             <option value="">请选择店铺</option>
                         </select>
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>结算</label>
-                        <select id="editSettled">
+                        <label>结算 <span style="color: #f44336;">*</span></label>
+                        <select id="editSettled" required>
                             <option value="false">否</option>
                             <option value="true">是</option>
                         </select>
@@ -404,15 +404,56 @@
             return dateStr.split('T')[0];
         }
 
+        function trimAndValidate(str) {
+            const trimmed = str.trim();
+            if (trimmed === '') {
+                return null;
+            }
+            return trimmed;
+        }
+
+        function showError(message) {
+            alert(message);
+        }
+
         document.getElementById('orderForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            
+            const date = trimAndValidate(document.getElementById('date').value);
+            const location = trimAndValidate(document.getElementById('location').value);
+            const content = trimAndValidate(document.getElementById('content').value);
+            const fee = document.getElementById('fee').value;
+            const settled = document.getElementById('settled').value;
+            const shop = trimAndValidate(document.getElementById('shop').value);
+            
+            if (!date) {
+                showError('日期不能为空或只包含空格');
+                return;
+            }
+            if (!location) {
+                showError('地点不能为空或只包含空格');
+                return;
+            }
+            if (!content) {
+                showError('内容不能为空或只包含空格');
+                return;
+            }
+            if (!fee) {
+                showError('费用不能为空');
+                return;
+            }
+            if (!shop) {
+                showError('店铺不能为空');
+                return;
+            }
+            
             const order = {
-                date: document.getElementById('date').value,
-                location: document.getElementById('location').value,
-                content: document.getElementById('content').value,
-                fee: parseFloat(document.getElementById('fee').value),
-                settled: document.getElementById('settled').value === 'true',
-                shop: document.getElementById('shop').value
+                date: date,
+                location: location,
+                content: content,
+                fee: parseFloat(fee),
+                settled: settled === 'true',
+                shop: shop
             };
             await fetch(API_URL, {
                 method: 'POST',
@@ -420,6 +461,7 @@
                 body: JSON.stringify(order)
             });
             document.getElementById('orderForm').reset();
+            document.getElementById('date').value = getTodayDate();
             toggleCollapse();
             currentPage = 1;
             loadOrders();
@@ -451,13 +493,42 @@
 
         document.getElementById('editForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            
+            const date = trimAndValidate(document.getElementById('editDate').value);
+            const location = trimAndValidate(document.getElementById('editLocation').value);
+            const content = trimAndValidate(document.getElementById('editContent').value);
+            const fee = document.getElementById('editFee').value;
+            const settled = document.getElementById('editSettled').value;
+            const shop = trimAndValidate(document.getElementById('editShop').value);
+            
+            if (!date) {
+                showError('日期不能为空或只包含空格');
+                return;
+            }
+            if (!location) {
+                showError('地点不能为空或只包含空格');
+                return;
+            }
+            if (!content) {
+                showError('内容不能为空或只包含空格');
+                return;
+            }
+            if (!fee) {
+                showError('费用不能为空');
+                return;
+            }
+            if (!shop) {
+                showError('店铺不能为空');
+                return;
+            }
+            
             const order = {
-                date: document.getElementById('editDate').value,
-                location: document.getElementById('editLocation').value,
-                content: document.getElementById('editContent').value,
-                fee: parseFloat(document.getElementById('editFee').value),
-                settled: document.getElementById('editSettled').value === 'true',
-                shop: document.getElementById('editShop').value
+                date: date,
+                location: location,
+                content: content,
+                fee: parseFloat(fee),
+                settled: settled === 'true',
+                shop: shop
             };
             await fetch(`${API_URL}/${editingId}`, {
                 method: 'PUT',
@@ -476,8 +547,19 @@
         }
 
         document.querySelector('.close-modal').addEventListener('click', closeModal);
-        window.addEventListener('click', (e) => {
-            if (e.target === document.getElementById('editModal')) closeModal();
+        
+        let isMouseDownInside = false;
+        document.querySelector('.modal-content').addEventListener('mousedown', () => {
+            isMouseDownInside = true;
+        });
+        document.addEventListener('mouseup', (e) => {
+            if (isMouseDownInside) {
+                isMouseDownInside = false;
+                return;
+            }
+            if (e.target === document.getElementById('editModal')) {
+                closeModal();
+            }
         });
 
         function createDatePicker(inputId) {
@@ -628,7 +710,16 @@
             renderCalendar();
         }
 
+        function getTodayDate() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('date').value = getTodayDate();
             loadOrders();
             loadShops();
             createDatePicker('date');

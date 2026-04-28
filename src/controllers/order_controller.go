@@ -3,14 +3,61 @@ package controllers
 import (
 	"encoding/csv"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/YuanShan-CN/order_management/src/database"
 	"github.com/YuanShan-CN/order_management/src/models"
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 	"gorm.io/gorm"
 )
+
+var validate = validator.New()
+
+func validateOrder(order *models.Order) error {
+	order.Location = strings.TrimSpace(order.Location)
+	order.Content = strings.TrimSpace(order.Content)
+	order.Shop = strings.TrimSpace(order.Shop)
+
+	if err := validate.Struct(order); err != nil {
+		var errMsg string
+		for _, e := range err.(validator.ValidationErrors) {
+			fieldName := getFieldName(e.Field())
+			switch e.Tag() {
+			case "required":
+				errMsg = fmt.Sprintf("%s不能为空", fieldName)
+			case "datetime":
+				errMsg = fmt.Sprintf("%s格式不正确，应为 YYYY-MM-DD", fieldName)
+			case "numeric":
+				errMsg = fmt.Sprintf("%s必须是数字", fieldName)
+			default:
+				errMsg = fmt.Sprintf("%s验证失败", fieldName)
+			}
+			return errors.New(errMsg)
+		}
+	}
+	return nil
+}
+
+func getFieldName(field string) string {
+	switch field {
+	case "Date":
+		return "日期"
+	case "Location":
+		return "地点"
+	case "Content":
+		return "内容"
+	case "Fee":
+		return "费用"
+	case "Shop":
+		return "店铺"
+	default:
+		return field
+	}
+}
 
 func GetOrders(c *gin.Context) {
 	var orders []models.Order
@@ -96,6 +143,10 @@ func CreateOrder(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if err := validateOrder(&order); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	if err := database.DB.Create(&order).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -115,6 +166,10 @@ func UpdateOrder(c *gin.Context) {
 		return
 	}
 	if err := c.ShouldBindJSON(&order); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := validateOrder(&order); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

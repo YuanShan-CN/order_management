@@ -2,17 +2,48 @@ package controllers
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/YuanShan-CN/order_management/src/database"
 	"github.com/YuanShan-CN/order_management/src/models"
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 	"gorm.io/gorm"
 )
 
+var shopValidate = validator.New()
+
+func validateShop(shop *models.Shop) error {
+	shop.Name = strings.TrimSpace(shop.Name)
+
+	if err := shopValidate.Struct(shop); err != nil {
+		for _, e := range err.(validator.ValidationErrors) {
+			fieldName := getShopFieldName(e.Field())
+			switch e.Tag() {
+			case "required":
+				return errors.New(fmt.Sprintf("%s不能为空", fieldName))
+			default:
+				return errors.New(fmt.Sprintf("%s验证失败", fieldName))
+			}
+		}
+	}
+	return nil
+}
+
+func getShopFieldName(field string) string {
+	switch field {
+	case "Name":
+		return "店铺名称"
+	default:
+		return field
+	}
+}
+
 func GetShops(c *gin.Context) {
 	var shops []models.Shop
-	database.DB.Where("deleted_at IS NULL").Find(&shops)
+	database.DB.Where("deleted_at IS NULL").Order("id DESC").Find(&shops)
 	c.JSON(http.StatusOK, shops)
 }
 
@@ -36,6 +67,10 @@ func CreateShop(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if err := validateShop(&shop); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	if err := database.DB.Create(&shop).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -55,6 +90,10 @@ func UpdateShop(c *gin.Context) {
 		return
 	}
 	if err := c.ShouldBindJSON(&shop); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := validateShop(&shop); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

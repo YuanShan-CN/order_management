@@ -9,10 +9,11 @@
 - **收入统计** - 多维度数据统计，支持表格、条形图、饼图展示
 - **回收站** - 支持订单和店铺的软删除与恢复
 - **数据导入** - 支持 CSV 文件批量导入订单数据
+- **数据导出** - 支持将订单数据导出为 CSV 文件
 
 ## 🛠️ 技术栈
 
-- **后端**: Go 1.22 + Gin Framework
+- **后端**: Go 1.26 + Gin Framework
 - **数据库**: MariaDB 11.5
 - **ORM**: GORM v2
 - **前端**: HTML5 + CSS3 + JavaScript
@@ -71,16 +72,21 @@ go run main.go -c config.yaml
 
 ```
 order_management/
-├── config/          # 配置管理
-│   └── config.go    # 配置解析
-├── controllers/     # 控制器
-│   ├── order_controller.go
-│   └── shop_controller.go
-├── database/        # 数据库连接
-│   └── database.go
-├── models/          # 数据模型
-│   ├── order.go
-│   └── shop.go
+├── src/             # 源代码目录
+│   ├── config/      # 配置管理
+│   │   └── config.go
+│   ├── controllers/ # 控制器
+│   │   ├── order_controller.go
+│   │   └── shop_controller.go
+│   ├── database/    # 数据库连接
+│   │   └── database.go
+│   ├── middleware/  # 中间件
+│   │   └── cors.go
+│   ├── models/      # 数据模型
+│   │   ├── order.go
+│   │   └── shop.go
+│   └── router/      # 路由配置
+│       └── router.go
 ├── scripts/         # 辅助脚本
 │   ├── import_csv.go      # CSV 数据导入
 │   └── fill_shops.go      # 店铺数据填充
@@ -149,6 +155,40 @@ cd scripts
 go run fill_shops.go
 ```
 
+## 📤 数据导出
+
+### 导出订单为 CSV
+
+通过前端页面或 API 导出订单数据：
+
+**前端导出：**
+- 访问订单管理页面 (`/orders`) 或收入统计页面 (`/stats`)
+- 设置筛选条件（可选）
+- 点击橙色的 **📥 导出CSV** 按钮
+
+**API 导出：**
+
+```bash
+# 导出所有订单
+curl -o orders.csv http://localhost:8081/api/orders/export
+
+# 带筛选条件导出
+curl -o orders.csv "http://localhost:8081/api/orders/export?year=2026&settled=settled"
+
+# 导出统计数据
+curl -o stats.csv "http://localhost:8081/api/orders/stats/export?year=2026&month=4"
+```
+
+**导出参数：**
+
+| 参数 | 说明 | 示例 |
+|-----|------|------|
+| search | 搜索关键词 | search=故宫 |
+| settled | 结算状态 | settled 或 unsettled |
+| year | 年份筛选 | year=2026 |
+| month | 月份筛选 | month=4 |
+| shop | 店铺筛选 | shop=某店铺 |
+
 ## 🗂️ API 接口
 
 ### 订单接口
@@ -163,6 +203,8 @@ go run fill_shops.go
 | GET | /api/orders/trash | 获取回收站订单 |
 | POST | /api/orders/:id/restore | 恢复订单 |
 | DELETE | /api/orders/:id/force-delete | 永久删除订单 |
+| GET | /api/orders/export | 导出订单为 CSV |
+| GET | /api/orders/stats/export | 导出统计数据为 CSV |
 
 ### 店铺接口
 

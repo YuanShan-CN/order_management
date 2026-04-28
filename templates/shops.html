@@ -104,7 +104,7 @@
     </div>
 
     <div class="modal" id="editModal">
-        <div class="modal-content">
+        <div class="modal-content" onclick="event.stopPropagation()">
             <span class="close-modal" onclick="closeModal()">&times;</span>
             <h3>编辑店铺</h3>
             <form id="editForm">
@@ -203,8 +203,19 @@
         }
 
         document.querySelector('.close-modal').addEventListener('click', closeModal);
-        window.addEventListener('click', (e) => {
-            if (e.target === document.getElementById('editModal')) closeModal();
+        
+        let isMouseDownInside = false;
+        document.querySelector('.modal-content').addEventListener('mousedown', () => {
+            isMouseDownInside = true;
+        });
+        document.addEventListener('mouseup', (e) => {
+            if (isMouseDownInside) {
+                isMouseDownInside = false;
+                return;
+            }
+            if (e.target === document.getElementById('editModal')) {
+                closeModal();
+            }
         });
 
         document.addEventListener('DOMContentLoaded', loadShops);
