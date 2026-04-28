@@ -8,7 +8,7 @@
 - **店铺维护** - 店铺信息管理，支持回收站功能
 - **收入统计** - 多维度数据统计，支持表格、条形图、饼图展示
 - **回收站** - 支持订单和店铺的软删除与恢复
-- **数据导入** - 支持 CSV 文件批量导入订单数据
+- **数据导入** - 支持 CSV 文件批量导入订单数据，自动创建缺失的店铺
 - **数据导出** - 支持将订单数据导出为 CSV 文件
 - **多用户支持** - 用户登录、数据隔离、密码管理
 - **JWT 认证** - 安全的 token 认证机制
@@ -37,11 +37,13 @@
 git clone https://github.com/YuanShan-CN/order_management.git
 cd order_management
 
-# 2. 复制环境变量模板
+# 2. 复制环境变量和配置模板
 cp .env.example .env
+cp config.yaml.example config.yaml
 
-# 3. 修改 .env 文件中的密码
+# 3. 修改配置文件
 # 编辑 .env 文件，设置 DB_ROOT_PASSWORD 和 DB_PASSWORD
+# 编辑 config.yaml 文件，根据需要修改数据库连接信息和 JWT 密钥
 
 # 4. 启动服务
 docker-compose up -d
@@ -53,14 +55,10 @@ sleep 5
 docker exec -it order_management_app ./init_user -username admin -password your_password
 
 # 7. 导入订单数据 (可选)
-# 先将 CSV 文件复制到容器内，然后导入
-docker cp /path/to/stats.csv order_management_app:/tmp/stats.csv
-docker exec -it order_management_app ./import_csv -user_id 1 /tmp/stats.csv
+# 登录系统后，在订单管理页面点击"📤 导入CSV"按钮
+# 支持 orders.csv 和 stats.csv 两种格式
 
-# 8. 填充店铺数据 (可选，需先导入订单)
-docker exec -it order_management_app ./fill_shops -user_id 1
-
-# 9. 访问系统
+# 8. 访问系统
 # 登录页面: http://localhost:8081/login
 # 数据库端口: 3306
 ```
@@ -68,23 +66,29 @@ docker exec -it order_management_app ./fill_shops -user_id 1
 ### 本地开发
 
 ```bash
-# 1. 设置环境变量
+# 1. 复制配置文件模板
+cp config.yaml.example config.yaml
+
+# 2. 修改配置文件
+# 编辑 config.yaml，设置数据库连接信息和 JWT 密钥
+
+# 3. 设置环境变量 (可选，如果使用 Docker 数据库)
 export DB_HOST=127.0.0.1
 export DB_PORT=3306
 export DB_USER=root
 export DB_PASSWORD=your_password
 export DB_NAME=order_management
 
-# 2. 安装依赖
+# 4. 安装依赖
 go mod tidy
 
-# 3. 编译项目
+# 5. 编译项目
 go build -o order_management .
 
-# 4. 初始化用户
+# 6. 初始化用户
 ./order_management init -username admin -password your_password
 
-# 5. 运行服务
+# 7. 运行服务
 ./order_management -c config.yaml
 ```
 
@@ -156,7 +160,7 @@ order_management/
 
 ## 🔧 配置说明
 
-### 环境变量
+### 环境变量 (.env)
 
 | 变量名 | 说明 | 默认值 |
 |-------|------|-------|
@@ -184,10 +188,38 @@ jwt:
   expire_hour: 24
 ```
 
+**配置说明：**
+- `database`: 数据库连接信息
+- `server`: HTTP 服务器配置
+- `jwt`: JWT 认证配置，`secret` 请在生产环境修改为强密钥
+
+**注意：**
+- `config.yaml` 和 `.env` 都已在 `.gitignore` 中，不会被提交
+- 首次部署时，请从模板文件复制：
+  ```bash
+  cp config.yaml.example config.yaml
+  cp .env.example .env
+  ```
+- Docker 部署时，config.yaml 会被挂载到容器内
+
 ## 📊 数据导入
 
 ### 导入 CSV 订单数据
 
+**通过前端页面导入（推荐）：**
+- 登录后访问订单管理页面 (`/orders`)
+- 点击紫色的 **📤 导入CSV** 按钮
+- 选择 CSV 文件并提交
+- 系统会自动创建缺失的店铺
+
+**CSV 格式要求：**
+- 必须包含列：日期、店铺、费用、已结算
+- 可选列：地点、内容
+- 已结算列填写"是"/"否" 或 "true"/"false" 或 "1"/"0"
+- 日期格式：YYYY-MM-DD 或 YYYY-MM-DDTHH:MM:SS±HH:MM
+- 支持导出的 orders.csv 和 stats.csv 格式
+
+**命令行导入（备用）：**
 ```bash
 # 设置环境变量
 export DB_PASSWORD=your_password
@@ -195,14 +227,6 @@ export DB_PASSWORD=your_password
 # 运行导入脚本
 cd scripts
 go run import_csv.go /path/to/orders.csv
-```
-
-### 填充店铺数据
-
-```bash
-# 从订单表提取商家名称填充店铺表
-cd scripts
-go run fill_shops.go
 ```
 
 ## 📤 数据导出
@@ -242,6 +266,32 @@ curl -H "Authorization: Bearer $TOKEN" \
 | year | 年份筛选 | year=2026 |
 | month | 月份筛选 | month=4 |
 | shop | 店铺筛选 | shop=某店铺 |
+
+### 导入 CSV 订单数据
+
+```bash
+# 获取登录 token
+TOKEN=$(curl -s -X POST http://localhost:8081/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"your_password"}' | jq -r '.token')
+
+# 导入 CSV 文件
+curl -H "Authorization: Bearer $TOKEN" \
+  -X POST \
+  -F "file=@/path/to/orders.csv" \
+  http://localhost:8081/api/orders/import
+```
+
+**导入响应示例：**
+```json
+{
+  "importedCount": 220,
+  "createdShopCount": 15,
+  "failedCount": 0,
+  "errors": [],
+  "message": "成功导入 220 条数据，自动创建 15 个新店铺"
+}
+```
 
 ## 🗂️ API 接口
 

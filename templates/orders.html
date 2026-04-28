@@ -332,14 +332,20 @@
         
         function openImportModal() {
             document.getElementById('importModal').style.display = 'flex';
-            document.getElementById('importForm').reset();
-            document.getElementById('importResult').style.display = 'none';
-            document.getElementById('importResult').innerHTML = '';
-            document.getElementById('importBtn').disabled = false;
+            resetImportForm();
         }
         
         function closeImportModal() {
             document.getElementById('importModal').style.display = 'none';
+        }
+        
+        function resetImportForm() {
+            document.getElementById('importForm').reset();
+            document.getElementById('importResult').style.display = 'none';
+            document.getElementById('importResult').innerHTML = '';
+            document.getElementById('importBtn').disabled = false;
+            document.getElementById('importBtn').textContent = '导入';
+            document.getElementById('importBtn').style.display = 'block';
         }
         
         async function importCSV(file) {
@@ -736,39 +742,62 @@
             e.preventDefault();
             const fileInput = document.getElementById('csvFile');
             const file = fileInput.files[0];
-            
+
             if (!file) {
                 alert('请选择文件');
                 return;
             }
-            
+
             const importBtn = document.getElementById('importBtn');
             importBtn.disabled = true;
             importBtn.textContent = '导入中...';
-            
+
             try {
                 const result = await importCSV(file);
                 const importResult = document.getElementById('importResult');
                 importResult.style.display = 'block';
-                
+
                 if (result.importedCount > 0) {
                     importResult.innerHTML = `
                         <div style="padding: 10px; background: #E8F5E9; border-radius: 4px; color: #2E7D32; margin-bottom: 10px;">
                             ${result.message}
                         </div>
+                        <div style="margin-top: 10px;">
+                            <button type="button" class="btn" style="background: #2196F3; color: white; margin-right: 10px;" onclick="resetImportForm()">
+                                重新导入
+                            </button>
+                            <button type="button" class="btn" style="background: #9E9E9E; color: white;" onclick="closeImportModal()">
+                                关闭
+                            </button>
+                        </div>
                     `;
                     if (result.failedCount > 0 && result.errors) {
-                        importResult.innerHTML += `
-                            <div style="padding: 10px; background: #FFEBEE; border-radius: 4px; color: #C62828; max-height: 200px; overflow-y: auto;">
+                        importResult.innerHTML = `
+                            <div style="padding: 10px; background: #E8F5E9; border-radius: 4px; color: #2E7D32; margin-bottom: 10px;">
+                                ${result.message}
+                            </div>
+                            <div style="padding: 10px; background: #FFEBEE; border-radius: 4px; color: #C62828; max-height: 200px; overflow-y: auto; margin-bottom: 10px;">
                                 <strong>失败详情：</strong>
                                 <ul style="margin: 5px 0 0 20px;">
                                     ${result.errors.slice(0, 10).map(err => `<li>${err}</li>`).join('')}
                                     ${result.errors.length > 10 ? `<li>... 还有 ${result.errors.length - 10} 条错误</li>` : ''}
                                 </ul>
                             </div>
+                            <div style="margin-top: 10px;">
+                                <button type="button" class="btn" style="background: #2196F3; color: white; margin-right: 10px;" onclick="resetImportForm()">
+                                    重新导入
+                                </button>
+                                <button type="button" class="btn" style="background: #9E9E9E; color: white;" onclick="closeImportModal()">
+                                    关闭
+                                </button>
+                            </div>
                         `;
                     }
                     loadOrders();
+                    loadShops(); // 刷新店铺列表
+                    
+                    // 隐藏原来的提交按钮
+                    importBtn.style.display = 'none';
                 } else {
                     importResult.innerHTML = `
                         <div style="padding: 10px; background: #FFEBEE; border-radius: 4px; color: #C62828;">
@@ -780,6 +809,9 @@
                             ` : ''}
                         </div>
                     `;
+                    // 失败时可以重新导入
+                    importBtn.disabled = false;
+                    importBtn.textContent = '重试';
                 }
             } catch (error) {
                 const importResult = document.getElementById('importResult');
@@ -789,9 +821,8 @@
                         导入失败：${error.message}
                     </div>
                 `;
-            } finally {
                 importBtn.disabled = false;
-                importBtn.textContent = '导入';
+                importBtn.textContent = '重试';
             }
         });
 
