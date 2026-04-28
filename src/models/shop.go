@@ -4,7 +4,8 @@ import "gorm.io/gorm"
 
 type Shop struct {
 	gorm.Model
-	Name string `json:"name" gorm:"type:varchar(100);not null;unique" validate:"required"`
+	UserID uint   `json:"user_id" gorm:"index;not null"`
+	Name   string `json:"name" gorm:"type:varchar(100);not null" validate:"required"`
 }
 
 func (Shop) TableName() string {

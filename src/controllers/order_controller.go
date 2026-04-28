@@ -59,9 +59,18 @@ func getFieldName(field string) string {
 	}
 }
 
+func getUserID(c *gin.Context) uint {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		return 0
+	}
+	return userID.(uint)
+}
+
 func GetOrders(c *gin.Context) {
+	userID := getUserID(c)
 	var orders []models.Order
-	db := database.DB.Where("deleted_at IS NULL")
+	db := database.DB.Where("deleted_at IS NULL AND user_id = ?", userID)
 
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("size", "15"))
@@ -124,9 +133,10 @@ func GetOrders(c *gin.Context) {
 }
 
 func GetOrder(c *gin.Context) {
+	userID := getUserID(c)
 	id := c.Param("id")
 	var order models.Order
-	if err := database.DB.First(&order, id).Error; err != nil {
+	if err := database.DB.Where("id = ? AND user_id = ?", id, userID).First(&order).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
 			return
@@ -138,6 +148,7 @@ func GetOrder(c *gin.Context) {
 }
 
 func CreateOrder(c *gin.Context) {
+	userID := getUserID(c)
 	var order models.Order
 	if err := c.ShouldBindJSON(&order); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -147,6 +158,7 @@ func CreateOrder(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	order.UserID = userID
 	if err := database.DB.Create(&order).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -155,9 +167,10 @@ func CreateOrder(c *gin.Context) {
 }
 
 func UpdateOrder(c *gin.Context) {
+	userID := getUserID(c)
 	id := c.Param("id")
 	var order models.Order
-	if err := database.DB.First(&order, id).Error; err != nil {
+	if err := database.DB.Where("id = ? AND user_id = ?", id, userID).First(&order).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
 			return
@@ -173,14 +186,16 @@ func UpdateOrder(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	order.UserID = userID
 	database.DB.Save(&order)
 	c.JSON(http.StatusOK, order)
 }
 
 func DeleteOrder(c *gin.Context) {
+	userID := getUserID(c)
 	id := c.Param("id")
 	var order models.Order
-	if err := database.DB.Where("deleted_at IS NULL").First(&order, id).Error; err != nil {
+	if err := database.DB.Where("deleted_at IS NULL AND id = ? AND user_id = ?", id, userID).First(&order).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
 			return
@@ -193,8 +208,9 @@ func DeleteOrder(c *gin.Context) {
 }
 
 func GetDeletedOrders(c *gin.Context) {
+	userID := getUserID(c)
 	var orders []models.Order
-	db := database.DB.Unscoped().Where("deleted_at IS NOT NULL")
+	db := database.DB.Unscoped().Where("deleted_at IS NOT NULL AND user_id = ?", userID)
 
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("size", "15"))
@@ -235,9 +251,10 @@ func GetDeletedOrders(c *gin.Context) {
 }
 
 func RestoreOrder(c *gin.Context) {
+	userID := getUserID(c)
 	id := c.Param("id")
 	var order models.Order
-	if err := database.DB.Unscoped().Where("deleted_at IS NOT NULL").First(&order, id).Error; err != nil {
+	if err := database.DB.Unscoped().Where("deleted_at IS NOT NULL AND id = ? AND user_id = ?", id, userID).First(&order).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Order not found in trash"})
 			return
@@ -250,9 +267,10 @@ func RestoreOrder(c *gin.Context) {
 }
 
 func ForceDeleteOrder(c *gin.Context) {
+	userID := getUserID(c)
 	id := c.Param("id")
 	var order models.Order
-	if err := database.DB.Unscoped().Where("deleted_at IS NOT NULL").First(&order, id).Error; err != nil {
+	if err := database.DB.Unscoped().Where("deleted_at IS NOT NULL AND id = ? AND user_id = ?", id, userID).First(&order).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Order not found in trash"})
 			return
@@ -265,8 +283,9 @@ func ForceDeleteOrder(c *gin.Context) {
 }
 
 func ExportOrdersCSV(c *gin.Context) {
+	userID := getUserID(c)
 	var orders []models.Order
-	db := database.DB.Where("deleted_at IS NULL")
+	db := database.DB.Where("deleted_at IS NULL AND user_id = ?", userID)
 
 	search := c.Query("search")
 	settled := c.Query("settled")
@@ -335,8 +354,9 @@ func ExportOrdersCSV(c *gin.Context) {
 }
 
 func ExportStatsCSV(c *gin.Context) {
+	userID := getUserID(c)
 	var orders []models.Order
-	db := database.DB.Where("deleted_at IS NULL")
+	db := database.DB.Where("deleted_at IS NULL AND user_id = ?", userID)
 
 	year := c.Query("year")
 	month := c.Query("month")

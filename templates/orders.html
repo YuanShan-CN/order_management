@@ -261,12 +261,50 @@
         let settledFilter = 'all';
         const pageSize = 15;
 
+        function getToken() {
+            return localStorage.getItem('token');
+        }
+
+        async function authFetch(url, options = {}) {
+            const token = getToken();
+            if (!token) {
+                window.location.href = '/login';
+                throw new Error('Not authenticated');
+            }
+            
+            options.headers = options.headers || {};
+            options.headers['Authorization'] = `Bearer ${token}`;
+            
+            const response = await fetch(url, options);
+            
+            if (response.status === 401) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user_id');
+                localStorage.removeItem('username');
+                window.location.href = '/login';
+                throw new Error('Unauthorized');
+            }
+            
+            return response;
+        }
+
         function exportCSV() {
+            const token = getToken();
+            if (!token) {
+                window.location.href = '/login';
+                return;
+            }
+            
             let url = `${API_URL}/export?sort=${sortBy}&settled=${settledFilter}`;
             if (searchKeyword) {
                 url += `&search=${encodeURIComponent(searchKeyword)}`;
             }
-            window.location.href = url;
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'orders.csv');
+            link.setAttribute('target', '_blank');
+            link.click();
         }
 
         async function loadOrders() {
@@ -275,7 +313,7 @@
                 url += `&search=${encodeURIComponent(searchKeyword)}`;
             }
             
-            const response = await fetch(url);
+            const response = await authFetch(url);
             const result = await response.json();
             
             if (result.orders) {
@@ -291,7 +329,7 @@
         }
 
         async function loadShops() {
-            const response = await fetch(SHOP_API_URL);
+            const response = await authFetch(SHOP_API_URL);
             shops = await response.json();
             updateShopSelects();
         }
@@ -455,7 +493,7 @@
                 settled: settled === 'true',
                 shop: shop
             };
-            await fetch(API_URL, {
+            await authFetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(order)
@@ -467,23 +505,21 @@
             loadOrders();
         });
 
-        function openEditModal(id) {
+        async function openEditModal(id) {
             editingId = id;
-            fetch(`${API_URL}/${id}`)
-                .then(res => res.json())
-                .then(order => {
-                    document.getElementById('editId').value = order.ID;
-                    document.getElementById('editDate').value = formatDateForInput(order.date);
-                    document.getElementById('editLocation').value = order.location;
-                    document.getElementById('editContent').value = order.content;
-                    document.getElementById('editFee').value = order.fee;
-                    document.getElementById('editSettled').value = String(order.settled);
-                    document.getElementById('editShop').value = order.shop || '';
-                    document.getElementById('editModal').style.display = 'flex';
-                    setTimeout(() => {
-                        initDatepickers();
-                    }, 100);
-                });
+            const response = await authFetch(`${API_URL}/${id}`);
+            const order = await response.json();
+            document.getElementById('editId').value = order.ID;
+            document.getElementById('editDate').value = formatDateForInput(order.date);
+            document.getElementById('editLocation').value = order.location;
+            document.getElementById('editContent').value = order.content;
+            document.getElementById('editFee').value = order.fee;
+            document.getElementById('editSettled').value = String(order.settled);
+            document.getElementById('editShop').value = order.shop || '';
+            document.getElementById('editModal').style.display = 'flex';
+            setTimeout(() => {
+                initDatepickers();
+            }, 100);
         }
 
         function closeModal() {
@@ -530,7 +566,7 @@
                 settled: settled === 'true',
                 shop: shop
             };
-            await fetch(`${API_URL}/${editingId}`, {
+            await authFetch(`${API_URL}/${editingId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(order)
@@ -541,7 +577,7 @@
 
         async function deleteOrder(id) {
             if (confirm('确定要删除这个订单吗？')) {
-                await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+                await authFetch(`${API_URL}/${id}`, { method: 'DELETE' });
                 loadOrders();
             }
         }

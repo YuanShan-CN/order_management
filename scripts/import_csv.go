@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/csv"
+	"flag"
 	"fmt"
 	"os"
 	"strconv"
@@ -13,6 +14,7 @@ import (
 
 type Order struct {
 	ID        uint      `gorm:"primary_key"`
+	UserID    uint      `gorm:"not null"`
 	Date      string    `gorm:"type:date;not null"`
 	Location  string    `gorm:"type:varchar(200)"`
 	Content   string    `gorm:"type:text"`
@@ -35,12 +37,17 @@ func getEnv(key, defaultValue string) string {
 }
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("Usage: go run import_csv.go <csv_file_path>")
+	var userID uint
+	flag.UintVar(&userID, "user_id", 1, "User ID to assign to imported orders")
+	flag.Parse()
+
+	args := flag.Args()
+	if len(args) < 1 {
+		fmt.Println("Usage: go run import_csv.go -user_id <user_id> <csv_file_path>")
 		return
 	}
 
-	csvPath := os.Args[1]
+	csvPath := args[0]
 
 	dbHost := getEnv("DB_HOST", "127.0.0.1")
 	dbPort := getEnv("DB_PORT", "3306")
@@ -103,7 +110,9 @@ func main() {
 			continue
 		}
 
-		date = date[:10]
+		if len(date) > 10 {
+			date = date[:10]
+		}
 
 		createdAt, err := time.Parse("2006-01-02", date)
 		if err != nil {
@@ -111,6 +120,7 @@ func main() {
 		}
 
 		orders = append(orders, Order{
+			UserID:    userID,
 			Date:      date,
 			Location:  location,
 			Content:   content,
@@ -133,5 +143,5 @@ func main() {
 		return
 	}
 
-	fmt.Printf("Successfully imported %d orders\n", len(orders))
+	fmt.Printf("Successfully imported %d orders with user_id=%d\n", len(orders), userID)
 }

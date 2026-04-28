@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"time"
@@ -18,6 +19,10 @@ func getEnv(key, defaultValue string) string {
 }
 
 func main() {
+	var userID uint
+	flag.UintVar(&userID, "user_id", 1, "User ID to assign to created shops")
+	flag.Parse()
+
 	dbHost := getEnv("DB_HOST", "127.0.0.1")
 	dbPort := getEnv("DB_PORT", "3306")
 	dbUser := getEnv("DB_USER", "root")
@@ -37,13 +42,13 @@ func main() {
 	}
 
 	var shopNames []string
-	err = db.Model(&models.Order{}).Distinct("shop").Pluck("shop", &shopNames).Error
+	err = db.Model(&models.Order{}).Where("user_id = ?", userID).Distinct("shop").Pluck("shop", &shopNames).Error
 	if err != nil {
 		fmt.Printf("Failed to get shop names: %v\n", err)
 		return
 	}
 
-	fmt.Printf("Found %d unique shop names in orders table\n", len(shopNames))
+	fmt.Printf("Found %d unique shop names in orders table for user_id=%d\n", len(shopNames), userID)
 
 	now := time.Now()
 	createdCount := 0
@@ -53,26 +58,27 @@ func main() {
 		}
 
 		var existingShop models.Shop
-		result := db.Where("name = ?", name).First(&existingShop)
+		result := db.Where("name = ? AND user_id = ?", name, userID).First(&existingShop)
 
 		if result.Error == gorm.ErrRecordNotFound {
 			shop := models.Shop{
-				Name: name,
+				UserID: userID,
+				Name:   name,
 			}
 			shop.CreatedAt = now
 			err := db.Create(&shop).Error
 			if err != nil {
 				fmt.Printf("Failed to create shop '%s': %v\n", name, err)
 			} else {
-				fmt.Printf("Created shop: %s\n", name)
+				fmt.Printf("Created shop: %s (user_id=%d)\n", name, userID)
 				createdCount++
 			}
 		} else if result.Error != nil {
 			fmt.Printf("Failed to check shop '%s': %v\n", name, result.Error)
 		} else {
-			fmt.Printf("Shop already exists: %s\n", name)
+			fmt.Printf("Shop already exists: %s (user_id=%d)\n", name, userID)
 		}
 	}
 
-	fmt.Printf("\nDone! Created %d new shops\n", createdCount)
+	fmt.Printf("\nDone! Created %d new shops for user_id=%d\n", createdCount, userID)
 }

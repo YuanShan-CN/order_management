@@ -15,27 +15,104 @@
         .feature:hover { background: rgba(255,255,255,0.25); transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
         .feature-icon { font-size: 48px; margin-bottom: 15px; }
         .feature-title { font-size: 18px; font-weight: 500; }
+        .user-info { position: fixed; top: 20px; right: 20px; background: rgba(255,255,255,0.15); padding: 10px 20px; border-radius: 25px; display: flex; align-items: center; gap: 15px; }
+        .user-name { font-size: 14px; }
+        .logout-btn { background: none; border: 1px solid rgba(255,255,255,0.5); color: white; padding: 6px 15px; border-radius: 15px; cursor: pointer; font-size: 13px; transition: all 0.3s; }
+        .logout-btn:hover { background: rgba(255,255,255,0.2); }
+        .login-prompt { position: fixed; top: 20px; right: 20px; }
+        .login-btn { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.5); color: white; padding: 10px 20px; border-radius: 25px; cursor: pointer; font-size: 14px; text-decoration: none; transition: all 0.3s; }
+        .login-btn:hover { background: rgba(255,255,255,0.3); }
     </style>
 </head>
 <body>
+    <div class="login-prompt" id="loginPrompt">
+        <a href="/login" class="login-btn">🔒 登录</a>
+    </div>
+    
+    <div class="user-info" id="userInfo" style="display: none;">
+        <span class="user-name">👤 <span id="currentUser"></span></span>
+        <button class="logout-btn" onclick="logout()">登出</button>
+    </div>
+    
     <div class="container">
         <h1>📷 摄影订单管理系统</h1>
         <p class="subtitle">专业记录您的每一个摄影订单</p>
         
         <div class="features">
-            <div class="feature" onclick="location.href='/orders'">
+            <div class="feature" onclick="navigateTo('/orders')">
                 <div class="feature-icon">📝</div>
                 <div class="feature-title">订单管理</div>
             </div>
-            <div class="feature" onclick="location.href='/shops'">
+            <div class="feature" onclick="navigateTo('/shops')">
                 <div class="feature-icon">🏪</div>
                 <div class="feature-title">店铺维护</div>
             </div>
-            <div class="feature" onclick="location.href='/stats'">
+            <div class="feature" onclick="navigateTo('/stats')">
                 <div class="feature-icon">💰</div>
                 <div class="feature-title">收入统计</div>
             </div>
         </div>
     </div>
+
+    <script>
+        const API_URL = '/api/auth';
+
+        function getToken() {
+            return localStorage.getItem('token');
+        }
+
+        function getUserInfo() {
+            return {
+                user_id: localStorage.getItem('user_id'),
+                username: localStorage.getItem('username')
+            };
+        }
+
+        async function checkAuth() {
+            const token = getToken();
+            const userInfo = getUserInfo();
+            
+            if (token && userInfo.username) {
+                document.getElementById('loginPrompt').style.display = 'none';
+                document.getElementById('userInfo').style.display = 'flex';
+                document.getElementById('currentUser').textContent = userInfo.username;
+            }
+        }
+
+        async function logout() {
+            if (confirm('确定要登出吗？')) {
+                try {
+                    const token = getToken();
+                    await fetch(`${API_URL}/logout`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                } catch (e) {
+                    console.log('Logout error:', e);
+                } finally {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user_id');
+                    localStorage.removeItem('username');
+                    window.location.href = '/login';
+                }
+            }
+        }
+
+        function navigateTo(url) {
+            const token = getToken();
+            if (!token) {
+                window.location.href = '/login';
+            } else {
+                window.location.href = url;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuth();
+        });
+    </script>
 </body>
 </html>

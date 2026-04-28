@@ -126,6 +126,33 @@
         let orderSearchKeyword = '';
         const pageSize = 15;
 
+        function getToken() {
+            return localStorage.getItem('token');
+        }
+
+        async function authFetch(url, options = {}) {
+            const token = getToken();
+            if (!token) {
+                window.location.href = '/login';
+                throw new Error('Not authenticated');
+            }
+            
+            options.headers = options.headers || {};
+            options.headers['Authorization'] = `Bearer ${token}`;
+            
+            const response = await fetch(url, options);
+            
+            if (response.status === 401) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user_id');
+                localStorage.removeItem('username');
+                window.location.href = '/login';
+                throw new Error('Unauthorized');
+            }
+            
+            return response;
+        }
+
         function getUrlParam(name) {
             const params = new URLSearchParams(window.location.search);
             return params.get(name);
@@ -151,7 +178,7 @@
                 url += `&search=${encodeURIComponent(orderSearchKeyword)}`;
             }
             
-            const response = await fetch(url);
+            const response = await authFetch(url);
             const result = await response.json();
             
             if (result.orders) {
@@ -215,7 +242,7 @@
         }
 
         async function loadShops() {
-            const response = await fetch('/api/shops/trash');
+            const response = await authFetch('/api/shops/trash');
             const shops = await response.json();
             renderShops(shops);
         }
@@ -245,28 +272,28 @@
 
         async function restoreOrder(id) {
             if (confirm('确定要恢复这个订单吗？')) {
-                await fetch(`/api/orders/${id}/restore`, { method: 'POST' });
+                await authFetch(`/api/orders/${id}/restore`, { method: 'POST' });
                 loadOrders();
             }
         }
 
         async function forceDeleteOrder(id) {
             if (confirm('确定要永久删除这个订单吗？此操作不可撤销！')) {
-                await fetch(`/api/orders/${id}/force-delete`, { method: 'DELETE' });
+                await authFetch(`/api/orders/${id}/force-delete`, { method: 'DELETE' });
                 loadOrders();
             }
         }
 
         async function restoreShop(id) {
             if (confirm('确定要恢复这个店铺吗？')) {
-                await fetch(`/api/shops/${id}/restore`, { method: 'POST' });
+                await authFetch(`/api/shops/${id}/restore`, { method: 'POST' });
                 loadShops();
             }
         }
 
         async function forceDeleteShop(id) {
             if (confirm('确定要永久删除这个店铺吗？此操作不可撤销！')) {
-                await fetch(`/api/shops/${id}/force-delete`, { method: 'DELETE' });
+                await authFetch(`/api/shops/${id}/force-delete`, { method: 'DELETE' });
                 loadShops();
             }
         }
