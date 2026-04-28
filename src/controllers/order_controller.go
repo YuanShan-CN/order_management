@@ -7,8 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
-	"github.com/photographer/order_management/database"
-	"github.com/photographer/order_management/models"
+	"github.com/YuanShan-CN/order_management/src/database"
+	"github.com/YuanShan-CN/order_management/src/models"
 )
 
 func GetOrders(c *gin.Context) {

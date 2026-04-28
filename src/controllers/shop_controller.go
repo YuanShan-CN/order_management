@@ -4,10 +4,10 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/YuanShan-CN/order_management/src/database"
+	"github.com/YuanShan-CN/order_management/src/models"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
-	"github.com/photographer/order_management/database"
-	"github.com/photographer/order_management/models"
 )
 
 func GetShops(c *gin.Context) {

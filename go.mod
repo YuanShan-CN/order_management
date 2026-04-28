@@ -1,4 +1,4 @@
-module github.com/photographer/order_management
+module github.com/YuanShan-CN/order_management
 
 go 1.26.2
 

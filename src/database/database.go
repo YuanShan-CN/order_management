@@ -8,8 +8,8 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
-	"github.com/photographer/order_management/config"
-	"github.com/photographer/order_management/models"
+	"github.com/YuanShan-CN/order_management/src/config"
+	"github.com/YuanShan-CN/order_management/src/models"
 )
 
 var DB *gorm.DB
