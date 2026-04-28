@@ -14,21 +14,21 @@ services:
     volumes:
       - ./config.yaml:/app/config.yaml
     networks:
-      - order_management_network
+      - app_network
     restart: unless-stopped
 
   db:
     image: mariadb:11.5
-    container_name: order_management_db
+    container_name: my_mariadb
     ports:
-      - "3307:3306"
+      - "3306:3306"
     environment:
       MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
       MARIADB_DATABASE: ${DB_NAME}
     volumes:
-      - ~/code/docker/order_management/mariadb_data:/var/lib/mysql
+      - ~/code/docker/my_mariadb/mariadb_data:/var/lib/mysql
     networks:
-      - order_management_network
+      - app_network
     restart: unless-stopped
 
 networks:
