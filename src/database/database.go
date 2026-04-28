@@ -5,11 +5,11 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/YuanShan-CN/order_management/src/config"
+	"github.com/YuanShan-CN/order_management/src/models"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
-	"github.com/YuanShan-CN/order_management/src/config"
-	"github.com/YuanShan-CN/order_management/src/models"
 )
 
 var DB *gorm.DB
@@ -17,9 +17,9 @@ var DB *gorm.DB
 func Connect() error {
 	var err error
 	cfg := config.AppConfig.Database
-	
+
 	dsn := cfg.Username + ":" + cfg.Password + "@tcp(" + cfg.Host + ":" + strconv.Itoa(cfg.Port) + ")/" + cfg.Database + "?charset=utf8mb4&parseTime=True&loc=Local"
-	
+
 	DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
 	})
@@ -34,7 +34,7 @@ func Connect() error {
 	if err != nil {
 		return err
 	}
-	
+
 	log.Printf("Database connected: %s:%d/%s", cfg.Host, cfg.Port, cfg.Database)
 	return nil
 }
