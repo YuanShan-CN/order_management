@@ -21,6 +21,17 @@
         .error-message { background: #ffebee; color: #c62828; padding: 10px 15px; border-radius: 4px; margin-bottom: 15px; font-size: 14px; display: none; }
         .loading { display: inline-block; width: 20px; height: 20px; border: 2px solid #fff; border-radius: 50%; border-top-color: transparent; animation: spin 0.6s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
+        
+        @media (max-width: 768px) {
+            .login-container { 
+                padding: 30px 20px; 
+                margin: 20px;
+            }
+            .logo-icon { font-size: 40px; }
+            .logo h1 { font-size: 20px; }
+            input { padding: 10px 12px; font-size: 13px; }
+            .btn { padding: 10px; font-size: 14px; }
+        }
     </style>
 </head>
 <body>

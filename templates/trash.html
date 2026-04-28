@@ -46,6 +46,26 @@
         .tabs { display: flex; gap: 15px; margin-bottom: 20px; }
         .tab { padding: 10px 20px; background: white; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; }
         .tab.active { background: #667eea; color: white; border-color: #667eea; }
+
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            .sidebar { width: 100%; height: auto; position: relative; padding: 15px; }
+            .sidebar-header { display: none; }
+            .sidebar-nav { display: flex; justify-content: space-around; }
+            .nav-item { padding: 8px 12px; border-radius: 6px; }
+            .nav-item span { display: none; }
+            .nav-item i { font-size: 20px; }
+            .main-content { margin-left: 0; }
+            .header { padding: 15px 20px; }
+            .header h2 { font-size: 18px; }
+            .container { padding: 15px; }
+            .tab { padding: 8px 15px; font-size: 12px; }
+            th, td { padding: 10px 8px; font-size: 12px; }
+            .table-wrapper { overflow-x: auto; }
+            table { min-width: 500px; }
+            .btn { padding: 8px 15px; font-size: 12px; }
+            .actions { flex-direction: column; }
+        }
     </style>
 </head>
 <body>
@@ -77,22 +97,24 @@
                     <input type="text" id="orderSearchInput" class="search-input" placeholder="搜索地点、内容、店铺..." onkeyup="handleOrderSearch">
                 </div>
 
-                <table>
-                    <thead>
-                        <tr>
-                            <th>日期</th>
-                            <th>地点</th>
-                            <th>内容</th>
-                            <th>费用</th>
-                            <th>结算</th>
-                            <th>店铺</th>
-                            <th>操作</th>
-                        </tr>
-                    </thead>
-                    <tbody id="orderTable">
-                        <tr><td colspan="8" class="empty-state">订单回收站为空</td></tr>
-                    </tbody>
-                </table>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>日期</th>
+                                <th>地点</th>
+                                <th>内容</th>
+                                <th>费用</th>
+                                <th>结算</th>
+                                <th>店铺</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orderTable">
+                            <tr><td colspan="8" class="empty-state">订单回收站为空</td></tr>
+                        </tbody>
+                    </table>
+                </div>
 
                 <div class="pagination" id="orderPagination">
                     <button class="page-btn" id="orderPrevBtn" onclick="orderPrevPage()" disabled>上一页</button>
@@ -102,18 +124,20 @@
             </div>
 
             <div id="shopSection" class="section" style="display: none;">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>店铺名称</th>
-                            <th>操作</th>
-                        </tr>
-                    </thead>
-                    <tbody id="shopTable">
-                        <tr><td colspan="3" class="empty-state">店铺回收站为空</td></tr>
-                    </tbody>
-                </table>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>店铺名称</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="shopTable">
+                            <tr><td colspan="3" class="empty-state">店铺回收站为空</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>

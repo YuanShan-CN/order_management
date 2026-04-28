@@ -45,6 +45,49 @@
         .close-modal { position: absolute; top: 10px; right: 15px; font-size: 24px; cursor: pointer; color: #999; }
         .close-modal:hover { color: #333; }
         .shop-count { text-align: right; margin-bottom: 15px; color: #666; }
+        
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            .sidebar { 
+                width: 100%; 
+                height: auto; 
+                position: relative; 
+                flex-direction: row; 
+                align-items: center;
+                justify-content: space-between;
+                padding: 15px 20px;
+            }
+            .sidebar-header { 
+                margin-bottom: 0; 
+                padding-bottom: 0; 
+                border-bottom: none;
+            }
+            .sidebar-header h1 { font-size: 16px; }
+            .sidebar-nav { 
+                flex: none; 
+                display: flex; 
+                gap: 5px;
+            }
+            .nav-item { 
+                padding: 8px 12px; 
+                font-size: 12px;
+            }
+            .nav-item span { display: none; }
+            .nav-item i { font-size: 16px; }
+            .main-content { 
+                margin-left: 0; 
+                margin-top: 0;
+            }
+            .header { padding: 15px 20px; }
+            .header h2 { font-size: 18px; }
+            .container { padding: 15px; }
+            .form-row { flex-direction: column; }
+            .form-group { min-width: 100%; }
+            .btn { padding: 8px 15px; font-size: 12px; }
+            th, td { padding: 10px 8px; font-size: 13px; }
+            .actions { flex-direction: column; gap: 5px; }
+            .modal-content { width: 95%; padding: 20px; }
+        }
     </style>
 </head>
 <body>

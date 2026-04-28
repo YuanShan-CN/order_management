@@ -33,7 +33,7 @@
         .stat-label { color: #666; font-size: 12px; }
         .chart-container { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 30px; }
         .chart-title { font-size: 18px; font-weight: 600; color: #333; margin-bottom: 20px; }
-        .chart-bars { display: flex; align-items: flex-end; height: 200px; gap: 15px; padding-top: 20px; border-top: 1px solid #eee; }
+        .chart-bars { display: flex; align-items: flex-end; height: 200px; gap: 15px; padding-top: 20px; border-top: 1px solid #eee; overflow-x: auto; }
         .bar-container { flex: 1; display: flex; flex-direction: column; align-items: center; }
         .bar { width: 100%; max-width: 60px; background: linear-gradient(180deg, #667eea 0%, #764ba2 100%); border-radius: 5px 5px 0 0; transition: height 0.3s; }
         .bar-label { margin-top: 10px; font-size: 12px; color: #666; }
@@ -76,8 +76,8 @@
         .shop-bar-chart { display: flex; flex-direction: column; gap: 10px; padding: 20px; }
         .shop-bar-item { display: flex; align-items: center; gap: 15px; }
         .shop-bar-label { width: 120px; font-size: 14px; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .shop-bar-wrapper { flex: 1; height: 30px; background: #f0f0f0; border-radius: 15px; overflow: hidden; }
-        .shop-bar-fill { height: 100%; border-radius: 15px; display: flex; align-items: center; padding-left: 10px; color: white; font-size: 12px; font-weight: 500; }
+        .shop-bar-wrapper { flex: 1; height: 20px; background: #f0f0f0; border-radius: 4px; overflow: hidden; }
+        .shop-bar-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; padding-left: 8px; color: white; font-size: 12px; font-weight: 500; }
         .shop-bar-value { width: 100px; text-align: right; font-weight: 600; color: #333; }
         .shop-pie-chart { display: flex; justify-content: center; align-items: center; gap: 30px; padding: 30px; }
         .pie-container { position: relative; width: 250px; height: 250px; }
@@ -95,6 +95,68 @@
         .pie-tooltip { position: fixed; background: rgba(0,0,0,0.85); color: white; padding: 12px 15px; border-radius: 8px; font-size: 13px; z-index: 1000; pointer-events: none; min-width: 150px; }
         .tooltip-name { font-weight: 600; margin-bottom: 5px; }
         .tooltip-count, .tooltip-income, .tooltip-percentage { margin-bottom: 3px; opacity: 0.9; }
+        
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            .sidebar { 
+                width: 100%; 
+                height: auto; 
+                position: relative; 
+                flex-direction: row; 
+                align-items: center;
+                justify-content: space-between;
+                padding: 15px 20px;
+            }
+            .sidebar-header { 
+                margin-bottom: 0; 
+                padding-bottom: 0; 
+                border-bottom: none;
+            }
+            .sidebar-header h1 { font-size: 16px; }
+            .sidebar-nav { 
+                flex: none; 
+                display: flex; 
+                gap: 5px;
+            }
+            .nav-item { 
+                padding: 8px 12px; 
+                font-size: 12px;
+            }
+            .nav-item span { display: none; }
+            .nav-item i { font-size: 16px; }
+            .main-content { 
+                margin-left: 0; 
+                margin-top: 0;
+            }
+            .header { padding: 15px 20px; }
+            .header h2 { font-size: 18px; }
+            .container { padding: 15px; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .stat-value { font-size: 18px; }
+            .stat-label { font-size: 12px; }
+            .filter-bar { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .filter-group { flex-direction: column; align-items: stretch; }
+            .filter-group label { font-size: 12px; }
+            .filter-group select { width: 100%; font-size: 12px; }
+            .filter-bar .btn { grid-column: span 1; font-size: 12px; padding: 10px; }
+            .btn { padding: 8px 15px; font-size: 12px; }
+            th, td { padding: 10px 8px; font-size: 12px; }
+            .table-wrapper { overflow-x: auto; }
+            table { min-width: 500px; }
+            .chart-container { padding: 15px; }
+            .chart-title { display: none; }
+            .chart-bars { height: 150px; gap: 4px; padding-top: 10px; }
+            .bar-label { font-size: 10px; }
+            .bar-value { font-size: 10px; white-space: nowrap; }
+            .shop-bar-item { flex-direction: column; align-items: flex-start; gap: 5px; }
+            .shop-bar-label { width: 100%; }
+            .shop-bar-value { width: 100%; text-align: left; }
+            .shop-pie-chart { flex-direction: column; gap: 20px; }
+            .pie-container { width: 200px; height: 200px; }
+            .tabs-container { justify-content: flex-start; }
+            .tab-item { padding: 8px 12px; font-size: 12px; }
+            .mobile-hide { display: none; }
+        }
     </style>
 </head>
 <body>
@@ -197,24 +259,26 @@
                 <div class="chart-title">店铺收入统计</div>
                 <div class="tabs-container">
                     <div class="tab-item active" id="tableTab" onclick="switchShopTab('table')">表格</div>
-                    <div class="tab-item" id="barTab" onclick="switchShopTab('bar')">条形图</div>
+                    <div class="tab-item mobile-hide" id="barTab" onclick="switchShopTab('bar')">条形图</div>
                     <div class="tab-item" id="pieTab" onclick="switchShopTab('pie')">饼图</div>
                 </div>
                 <div id="tableView" class="tab-content">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th class="sortable" onclick="sortShopStats('name')">店铺名称</th>
-                                <th class="sortable" onclick="sortShopStats('count')">订单数</th>
-                                <th class="sortable desc" onclick="sortShopStats('income')">总收入</th>
-                            </tr>
-                        </thead>
-                        <tbody id="shopStats">
-                            <tr><td colspan="3" class="empty-state">暂无数据</td></tr>
-                        </tbody>
-                    </table>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th class="sortable" onclick="sortShopStats('name')">店铺名称</th>
+                                    <th class="sortable" onclick="sortShopStats('count')">订单数</th>
+                                    <th class="sortable desc" onclick="sortShopStats('income')">总收入</th>
+                                </tr>
+                            </thead>
+                            <tbody id="shopStats">
+                                <tr><td colspan="3" class="empty-state">暂无数据</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-                <div id="barView" class="tab-content" style="display: none;">
+                <div id="barView" class="tab-content mobile-hide" style="display: none;">
                     <div class="shop-bar-chart" id="shopBarChart">
                         <div class="empty-state">暂无数据</div>
                     </div>
@@ -416,9 +480,10 @@
 
             const maxValue = Math.max(...Object.values(monthlyData), 1);
             const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+            const maxBarHeight = 100;
 
             const bars = Object.entries(monthlyData).map(([month, value]) => {
-                const height = (value / maxValue) * 150;
+                const height = value > 0 ? Math.max((value / maxValue) * maxBarHeight, 6) : 0;
                 return `
                     <div class="bar-container">
                         <div class="bar-value">¥${value.toFixed(0)}</div>
@@ -494,12 +559,14 @@
                     <tr class="details-row">
                         <td colspan="3">
                             <div class="details-content">
-                                <table class="details-table">
+                                <div class="table-wrapper">
+                                    <table class="details-table">
                                     <thead>
                                         <tr>
                                             <th class="details-sortable ${detailsSortField === 'date' ? detailsSortOrder : ''}" onclick="sortDetails('date')">日期</th>
                                             <th class="details-sortable ${detailsSortField === 'location' ? detailsSortOrder : ''}" onclick="sortDetails('location')">地点</th>
                                             <th>内容</th>
+                                            <th class="details-sortable ${detailsSortField === 'settled' ? detailsSortOrder : ''}" onclick="sortDetails('settled')">结算</th>
                                             <th class="details-sortable ${detailsSortField === 'fee' ? detailsSortOrder : ''}" onclick="sortDetails('fee')">费用</th>
                                         </tr>
                                     </thead>
@@ -509,16 +576,18 @@
                                                 <td>${formatDate(order.date)}</td>
                                                 <td>${order.location || '-'}</td>
                                                 <td>${order.content || '-'}</td>
+                                                <td>${order.settled ? '<span style="color: #4CAF50;">是</span>' : '<span style="color: #FF9800;">否</span>'}</td>
                                                 <td>¥${order.fee.toFixed(2)}</td>
                                             </tr>
                                         `).join('')}
                                         <tr style="background: #f8f9fa; font-weight: 600;">
-                                            <td colspan="2" style="color: #666;">合计</td>
+                                            <td colspan="3" style="color: #666;">合计</td>
                                             <td style="color: #666;">共 ${sortedOrders.length} 条</td>
                                             <td style="color: #4CAF50;">¥${totalFee.toFixed(2)}</td>
                                         </tr>
                                     </tbody>
-                                </table>
+                                    </table>
+                                </div>
                             </div>
                         </td>
                     </tr>

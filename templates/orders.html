@@ -85,6 +85,54 @@
         .date-picker-btn { background: none; border: none; color: #667eea; cursor: pointer; font-size: 13px; }
         .date-picker-btn:hover { text-decoration: underline; }
         .date-picker-clear { color: #999; }
+        
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            .sidebar { 
+                width: 100%; 
+                height: auto; 
+                position: relative; 
+                flex-direction: row; 
+                align-items: center;
+                justify-content: space-between;
+                padding: 15px 20px;
+            }
+            .sidebar-header { 
+                margin-bottom: 0; 
+                padding-bottom: 0; 
+                border-bottom: none;
+            }
+            .sidebar-header h1 { font-size: 16px; }
+            .sidebar-nav { 
+                flex: none; 
+                display: flex; 
+                gap: 5px;
+            }
+            .nav-item { 
+                padding: 8px 12px; 
+                font-size: 12px;
+            }
+            .nav-item span { display: none; }
+            .nav-item i { font-size: 16px; }
+            .main-content { 
+                margin-left: 0; 
+                margin-top: 0;
+            }
+            .header { padding: 15px 20px; }
+            .header h2 { font-size: 18px; }
+            .container { padding: 15px; }
+            .form-row { flex-direction: column; }
+            .form-group { min-width: 100%; }
+            .search-bar { flex-direction: column; align-items: stretch; }
+            .search-input { min-width: 100%; }
+            .add-btn { margin-left: 0; }
+            .table-wrapper { overflow-x: auto; }
+            table { min-width: 600px; }
+            th, td { padding: 10px 8px; font-size: 13px; }
+            .actions { flex-direction: column; gap: 5px; }
+            .btn { padding: 8px 15px; font-size: 12px; }
+            .modal-content { width: 95%; padding: 20px; }
+        }
     </style>
 </head>
 <body>
@@ -178,8 +226,9 @@
                 </div>
             </div>
 
-            <table>
-                <thead>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
                     <tr>
                         <th class="sortable" onclick="sortTable('date')">日期</th>
                         <th>地点</th>
@@ -193,7 +242,8 @@
                 <tbody id="orderTable">
                     <tr><td colspan="8" class="empty-state">暂无订单数据</td></tr>
                 </tbody>
-            </table>
+                </table>
+            </div>
 
             <div class="pagination" id="pagination">
                 <button class="page-btn" id="prevBtn" onclick="prevPage()" disabled>上一页</button>
