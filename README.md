@@ -37,11 +37,13 @@
 git clone https://github.com/YuanShan-CN/order_management.git
 cd order_management
 
-# 2. 复制环境变量模板
+# 2. 复制环境变量和配置模板
 cp .env.example .env
+cp config.yaml.example config.yaml
 
-# 3. 修改 .env 文件中的密码
+# 3. 修改配置文件
 # 编辑 .env 文件，设置 DB_ROOT_PASSWORD 和 DB_PASSWORD
+# 编辑 config.yaml 文件，根据需要修改数据库连接信息和 JWT 密钥
 
 # 4. 启动服务
 docker-compose up -d
@@ -64,23 +66,29 @@ docker exec -it order_management_app ./init_user -username admin -password your_
 ### 本地开发
 
 ```bash
-# 1. 设置环境变量
+# 1. 复制配置文件模板
+cp config.yaml.example config.yaml
+
+# 2. 修改配置文件
+# 编辑 config.yaml，设置数据库连接信息和 JWT 密钥
+
+# 3. 设置环境变量 (可选，如果使用 Docker 数据库)
 export DB_HOST=127.0.0.1
 export DB_PORT=3306
 export DB_USER=root
 export DB_PASSWORD=your_password
 export DB_NAME=order_management
 
-# 2. 安装依赖
+# 4. 安装依赖
 go mod tidy
 
-# 3. 编译项目
+# 5. 编译项目
 go build -o order_management .
 
-# 4. 初始化用户
+# 6. 初始化用户
 ./order_management init -username admin -password your_password
 
-# 5. 运行服务
+# 7. 运行服务
 ./order_management -c config.yaml
 ```
 
@@ -152,7 +160,7 @@ order_management/
 
 ## 🔧 配置说明
 
-### 环境变量
+### 环境变量 (.env)
 
 | 变量名 | 说明 | 默认值 |
 |-------|------|-------|
@@ -179,6 +187,20 @@ jwt:
   secret: your-secret-key-change-in-production
   expire_hour: 24
 ```
+
+**配置说明：**
+- `database`: 数据库连接信息
+- `server`: HTTP 服务器配置
+- `jwt`: JWT 认证配置，`secret` 请在生产环境修改为强密钥
+
+**注意：**
+- `config.yaml` 和 `.env` 都已在 `.gitignore` 中，不会被提交
+- 首次部署时，请从模板文件复制：
+  ```bash
+  cp config.yaml.example config.yaml
+  cp .env.example .env
+  ```
+- Docker 部署时，config.yaml 会被挂载到容器内
 
 ## 📊 数据导入
 
@@ -244,6 +266,32 @@ curl -H "Authorization: Bearer $TOKEN" \
 | year | 年份筛选 | year=2026 |
 | month | 月份筛选 | month=4 |
 | shop | 店铺筛选 | shop=某店铺 |
+
+### 导入 CSV 订单数据
+
+```bash
+# 获取登录 token
+TOKEN=$(curl -s -X POST http://localhost:8081/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"your_password"}' | jq -r '.token')
+
+# 导入 CSV 文件
+curl -H "Authorization: Bearer $TOKEN" \
+  -X POST \
+  -F "file=@/path/to/orders.csv" \
+  http://localhost:8081/api/orders/import
+```
+
+**导入响应示例：**
+```json
+{
+  "importedCount": 220,
+  "createdShopCount": 15,
+  "failedCount": 0,
+  "errors": [],
+  "message": "成功导入 220 条数据，自动创建 15 个新店铺"
+}
+```
 
 ## 🗂️ API 接口
 
