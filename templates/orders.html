@@ -736,21 +736,21 @@
             e.preventDefault();
             const fileInput = document.getElementById('csvFile');
             const file = fileInput.files[0];
-            
+
             if (!file) {
                 alert('请选择文件');
                 return;
             }
-            
+
             const importBtn = document.getElementById('importBtn');
             importBtn.disabled = true;
             importBtn.textContent = '导入中...';
-            
+
             try {
                 const result = await importCSV(file);
                 const importResult = document.getElementById('importResult');
                 importResult.style.display = 'block';
-                
+
                 if (result.importedCount > 0) {
                     importResult.innerHTML = `
                         <div style="padding: 10px; background: #E8F5E9; border-radius: 4px; color: #2E7D32; margin-bottom: 10px;">
@@ -769,6 +769,7 @@
                         `;
                     }
                     loadOrders();
+                    loadShops(); // 刷新店铺列表
                 } else {
                     importResult.innerHTML = `
                         <div style="padding: 10px; background: #FFEBEE; border-radius: 4px; color: #C62828;">

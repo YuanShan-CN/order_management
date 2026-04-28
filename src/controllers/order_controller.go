@@ -480,8 +480,40 @@ func ImportOrdersCSV(c *gin.Context) {
 
 	var importedCount int
 	var failedCount int
+	var createdShopCount int
 	var errors []string
 
+	// 收集所有唯一的店铺名称，先检查并创建缺失的店铺
+	uniqueShopNames := make(map[string]bool)
+	for i, record := range records {
+		if i == 0 {
+			continue
+		}
+		if len(record) > shopIdx {
+			shopName := strings.TrimSpace(record[shopIdx])
+			if shopName != "" {
+				uniqueShopNames[shopName] = true
+			}
+		}
+	}
+
+	// 检查并创建缺失的店铺
+	for shopName := range uniqueShopNames {
+		var existingShop models.Shop
+		result := database.DB.Where("name = ? AND user_id = ? AND deleted_at IS NULL", shopName, userID).First(&existingShop)
+		if result.Error == gorm.ErrRecordNotFound {
+			// 店铺不存在，创建它
+			newShop := models.Shop{
+				UserID: userID,
+				Name:   shopName,
+			}
+			if err := database.DB.Create(&newShop).Error; err == nil {
+				createdShopCount++
+			}
+		}
+	}
+
+	// 导入订单数据
 	for i, record := range records {
 		if i == 0 {
 			continue
@@ -545,10 +577,19 @@ func ImportOrdersCSV(c *gin.Context) {
 		importedCount++
 	}
 
+	message := fmt.Sprintf("成功导入 %d 条数据", importedCount)
+	if createdShopCount > 0 {
+		message += fmt.Sprintf("，自动创建 %d 个新店铺", createdShopCount)
+	}
+	if failedCount > 0 {
+		message += fmt.Sprintf("，失败 %d 条", failedCount)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"importedCount": importedCount,
-		"failedCount":   failedCount,
-		"errors":        errors,
-		"message":       fmt.Sprintf("成功导入 %d 条数据，失败 %d 条", importedCount, failedCount),
+		"importedCount":    importedCount,
+		"createdShopCount": createdShopCount,
+		"failedCount":      failedCount,
+		"errors":           errors,
+		"message":          message,
 	})
 }
