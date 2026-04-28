@@ -46,11 +46,22 @@ cp .env.example .env
 # 4. 启动服务
 docker-compose up -d
 
-# 5. 初始化用户
-docker exec -it order_management_app_1 ./init_user -username admin -password your_password
+# 5. 等待服务启动 (约5秒)
+sleep 5
 
-# 6. 访问系统
-# 登录页面: http://localhost:8080/login
+# 6. 创建初始用户
+docker exec -it order_management_app ./init_user -username admin -password your_password
+
+# 7. 导入订单数据 (可选)
+# 先将 CSV 文件复制到容器内，然后导入
+docker cp /path/to/stats.csv order_management_app:/tmp/stats.csv
+docker exec -it order_management_app ./import_csv -user_id 1 /tmp/stats.csv
+
+# 8. 填充店铺数据 (可选，需先导入订单)
+docker exec -it order_management_app ./fill_shops -user_id 1
+
+# 9. 访问系统
+# 登录页面: http://localhost:8081/login
 # 数据库端口: 3306
 ```
 
