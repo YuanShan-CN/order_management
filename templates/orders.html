@@ -166,8 +166,8 @@
                 <select id="sortSelect" class="sort-select" onchange="loadOrders()">
                     <option value="date_desc">按日期降序</option>
                     <option value="date_asc">按日期升序</option>
-                    <option value="fee_desc">按费用降序</option>
-                    <option value="fee_asc">按费用升序</option>
+                    <option value="income_desc">按收入降序</option>
+                    <option value="income_asc">按收入升序</option>
                 </select>
                 <select id="filterSettled" class="sort-select" onchange="loadOrders()">
                     <option value="all">全部状态</option>
@@ -197,8 +197,8 @@
                                 <input type="text" id="location" required placeholder="拍摄地点">
                             </div>
                             <div class="form-group">
-                                <label>费用 <span style="color: #f44336;">*</span></label>
-                                <input type="number" id="fee" step="0.01" placeholder="拍摄费用" required>
+                                <label>定金</label>
+                                <input type="number" id="deposit" step="0.01" placeholder="定金金额">
                             </div>
                         </div>
                         <div class="form-row">
@@ -215,7 +215,11 @@
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label>结算 <span style="color: #f44336;">*</span></label>
+                                <label>尾款 <span style="color: #f44336;">*</span></label>
+                                <input type="number" id="balance" step="0.01" placeholder="尾款金额" required>
+                            </div>
+                            <div class="form-group">
+                                <label>结算（尾款） <span style="color: #f44336;">*</span></label>
                                 <select id="settled" required>
                                     <option value="false" selected>否</option>
                                     <option value="true">是</option>
@@ -234,14 +238,16 @@
                         <th class="sortable" onclick="sortTable('date')">日期</th>
                         <th>地点</th>
                         <th>内容</th>
-                        <th class="sortable" onclick="sortTable('fee')">费用</th>
-                        <th>结算</th>
                         <th>店铺</th>
+                        <th>定金</th>
+                        <th>尾款</th>
+                        <th>结算</th>
+                        <th class="sortable" onclick="sortTable('income')">总收入</th>
                         <th>操作</th>
                     </tr>
-                </thead>
+                    </thead>
                 <tbody id="orderTable">
-                    <tr><td colspan="8" class="empty-state">暂无订单数据</td></tr>
+                    <tr><td colspan="9" class="empty-state">暂无订单数据</td></tr>
                 </tbody>
                 </table>
             </div>
@@ -270,8 +276,8 @@
                         <input type="text" id="editLocation" required>
                     </div>
                     <div class="form-group">
-                        <label>费用 <span style="color: #f44336;">*</span></label>
-                        <input type="number" id="editFee" step="0.01" required>
+                        <label>定金</label>
+                        <input type="number" id="editDeposit" step="0.01">
                     </div>
                 </div>
                 <div class="form-row">
@@ -288,7 +294,11 @@
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>结算 <span style="color: #f44336;">*</span></label>
+                        <label>尾款 <span style="color: #f44336;">*</span></label>
+                        <input type="number" id="editBalance" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label>结算（尾款） <span style="color: #f44336;">*</span></label>
                         <select id="editSettled" required>
                             <option value="false">否</option>
                             <option value="true">是</option>
@@ -312,8 +322,8 @@
                 <div class="form-group" style="margin-top: 10px;">
                     <p style="font-size: 12px; color: #666; margin-bottom: 5px;">CSV格式要求：</p>
                     <ul style="font-size: 12px; color: #666; padding-left: 20px; margin: 0;">
-                        <li>必须包含列：日期、店铺、费用、已结算</li>
-                        <li>可选列：地点、内容</li>
+                        <li>必须包含列：日期、店铺、已结算</li>
+                        <li>可选列：地点、内容、定金、尾款、收入</li>
                         <li>已结算列填写"是"/"否" 或 "true"/"false" 或 "1"/"0"</li>
                         <li>日期格式：YYYY-MM-DD 或 YYYY-MM-DDTHH:MM:SS±HH:MM</li>
                         <li>支持导出的 orders.csv 和 stats.csv 格式</li>
@@ -490,7 +500,7 @@
         function renderOrders(orders) {
             const table = document.getElementById('orderTable');
             if (orders.length === 0) {
-                table.innerHTML = '<tr><td colspan="8" class="empty-state">暂无订单数据</td></tr>';
+                table.innerHTML = '<tr><td colspan="9" class="empty-state">暂无订单数据</td></tr>';
                 return;
             }
             table.innerHTML = orders.map(order => `
@@ -498,9 +508,11 @@
                     <td>${formatDate(order.date)}</td>
                     <td>${order.location || '-'}</td>
                     <td>${order.content || '-'}</td>
-                    <td>¥${order.fee.toFixed(2)}</td>
-                    <td><span class="${order.settled ? 'status-yes' : 'status-no'}">${order.settled ? '是' : '否'}</span></td>
                     <td>${order.shop || '-'}</td>
+                    <td>¥${(order.deposit || 0).toFixed(2)}</td>
+                    <td>¥${(order.balance || 0).toFixed(2)}</td>
+                    <td><span class="${order.settled ? 'status-yes' : 'status-no'}">${order.settled ? '是' : '否'}</span></td>
+                    <td>¥${order.settled ? order.income.toFixed(2) : (order.deposit || 0).toFixed(2)}</td>
                     <td class="actions">
                         <button class="btn btn-edit" onclick="openEditModal(${order.ID})">编辑</button>
                         <button class="btn btn-danger" onclick="deleteOrder(${order.ID})">删除</button>
@@ -521,7 +533,8 @@
 
         function updateStats(orders) {
             document.getElementById('orderCount').textContent = orders.length;
-            const total = orders.reduce((sum, o) => sum + o.fee, 0);
+            // 总收入 = 定金 + (已结算的尾款)
+            const total = orders.reduce((sum, o) => sum + (o.deposit || 0) + (o.settled ? (o.balance || 0) : 0), 0);
             document.querySelector('.total-amount').textContent = '¥' + total.toFixed(2);
         }
 
@@ -613,7 +626,8 @@
             const date = trimAndValidate(document.getElementById('date').value);
             const location = trimAndValidate(document.getElementById('location').value);
             const content = trimAndValidate(document.getElementById('content').value);
-            const fee = document.getElementById('fee').value;
+            const deposit = document.getElementById('deposit').value;
+            const balance = document.getElementById('balance').value;
             const settled = document.getElementById('settled').value;
             const shop = trimAndValidate(document.getElementById('shop').value);
             
@@ -629,8 +643,8 @@
                 showError('内容不能为空或只包含空格');
                 return;
             }
-            if (!fee) {
-                showError('费用不能为空');
+            if (!balance) {
+                showError('尾款不能为空');
                 return;
             }
             if (!shop) {
@@ -642,7 +656,8 @@
                 date: date,
                 location: location,
                 content: content,
-                fee: parseFloat(fee),
+                deposit: parseFloat(deposit) || 0,
+                balance: parseFloat(balance),
                 settled: settled === 'true',
                 shop: shop
             };
@@ -666,7 +681,8 @@
             document.getElementById('editDate').value = formatDateForInput(order.date);
             document.getElementById('editLocation').value = order.location;
             document.getElementById('editContent').value = order.content;
-            document.getElementById('editFee').value = order.fee;
+            document.getElementById('editDeposit').value = order.deposit || 0;
+            document.getElementById('editBalance').value = order.balance || 0;
             document.getElementById('editSettled').value = String(order.settled);
             document.getElementById('editShop').value = order.shop || '';
             document.getElementById('editModal').style.display = 'flex';
@@ -686,7 +702,8 @@
             const date = trimAndValidate(document.getElementById('editDate').value);
             const location = trimAndValidate(document.getElementById('editLocation').value);
             const content = trimAndValidate(document.getElementById('editContent').value);
-            const fee = document.getElementById('editFee').value;
+            const deposit = document.getElementById('editDeposit').value;
+            const balance = document.getElementById('editBalance').value;
             const settled = document.getElementById('editSettled').value;
             const shop = trimAndValidate(document.getElementById('editShop').value);
             
@@ -702,8 +719,8 @@
                 showError('内容不能为空或只包含空格');
                 return;
             }
-            if (!fee) {
-                showError('费用不能为空');
+            if (!balance) {
+                showError('尾款不能为空');
                 return;
             }
             if (!shop) {
@@ -715,7 +732,8 @@
                 date: date,
                 location: location,
                 content: content,
-                fee: parseFloat(fee),
+                deposit: parseFloat(deposit) || 0,
+                balance: parseFloat(balance),
                 settled: settled === 'true',
                 shop: shop
             };
