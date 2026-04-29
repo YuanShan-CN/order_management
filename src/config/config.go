@@ -37,20 +37,49 @@ var AppConfig Config
 func LoadConfig(configPath string) error {
 	data, err := ioutil.ReadFile(configPath)
 	if err != nil {
-		return err
+		if os.IsNotExist(err) {
+			log.Printf("Config file %s not found, using environment variables", configPath)
+		} else {
+			return err
+		}
+	} else {
+		err = yaml.Unmarshal(data, &AppConfig)
+		if err != nil {
+			return err
+		}
+		log.Printf("Config loaded from %s", configPath)
 	}
 
-	err = yaml.Unmarshal(data, &AppConfig)
-	if err != nil {
-		return err
-	}
-
+	setDefaultValues()
 	overrideFromEnv()
 
-	log.Printf("Config loaded from %s", configPath)
 	log.Printf("Database: %s:%d/%s", AppConfig.Database.Host, AppConfig.Database.Port, AppConfig.Database.Database)
 
 	return nil
+}
+
+func setDefaultValues() {
+	if AppConfig.Database.Host == "" {
+		AppConfig.Database.Host = "localhost"
+	}
+	if AppConfig.Database.Port == 0 {
+		AppConfig.Database.Port = 3306
+	}
+	if AppConfig.Database.Username == "" {
+		AppConfig.Database.Username = "root"
+	}
+	if AppConfig.Database.Database == "" {
+		AppConfig.Database.Database = "order_management"
+	}
+	if AppConfig.Server.Port == 0 {
+		AppConfig.Server.Port = 8080
+	}
+	if AppConfig.JWT.Secret == "" {
+		AppConfig.JWT.Secret = "your-secret-key-change-in-production"
+	}
+	if AppConfig.JWT.ExpireHour == 0 {
+		AppConfig.JWT.ExpireHour = 24
+	}
 }
 
 func overrideFromEnv() {
