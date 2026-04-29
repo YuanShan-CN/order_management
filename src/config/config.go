@@ -50,36 +50,11 @@ func LoadConfig(configPath string) error {
 		log.Printf("Config loaded from %s", configPath)
 	}
 
-	setDefaultValues()
 	overrideFromEnv()
 
 	log.Printf("Database: %s:%d/%s", AppConfig.Database.Host, AppConfig.Database.Port, AppConfig.Database.Database)
 
 	return nil
-}
-
-func setDefaultValues() {
-	if AppConfig.Database.Host == "" {
-		AppConfig.Database.Host = "localhost"
-	}
-	if AppConfig.Database.Port == 0 {
-		AppConfig.Database.Port = 3306
-	}
-	if AppConfig.Database.Username == "" {
-		AppConfig.Database.Username = "root"
-	}
-	if AppConfig.Database.Database == "" {
-		AppConfig.Database.Database = "order_management"
-	}
-	if AppConfig.Server.Port == 0 {
-		AppConfig.Server.Port = 8080
-	}
-	if AppConfig.JWT.Secret == "" {
-		AppConfig.JWT.Secret = "your-secret-key-change-in-production"
-	}
-	if AppConfig.JWT.ExpireHour == 0 {
-		AppConfig.JWT.ExpireHour = 24
-	}
 }
 
 func overrideFromEnv() {
@@ -99,5 +74,18 @@ func overrideFromEnv() {
 	}
 	if name := os.Getenv("DB_NAME"); name != "" {
 		AppConfig.Database.Database = name
+	}
+	if secret := os.Getenv("JWT_SECRET"); secret != "" {
+		AppConfig.JWT.Secret = secret
+	}
+	if expireHour := os.Getenv("JWT_EXPIRE_HOUR"); expireHour != "" {
+		if h, err := strconv.Atoi(expireHour); err == nil {
+			AppConfig.JWT.ExpireHour = h
+		}
+	}
+	if serverPort := os.Getenv("SERVER_PORT"); serverPort != "" {
+		if p, err := strconv.Atoi(serverPort); err == nil {
+			AppConfig.Server.Port = p
+		}
 	}
 }
