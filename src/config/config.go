@@ -1,9 +1,8 @@
 package config
 
 import (
-	"io/ioutil"
 	"log"
-	"os"
+	"os" // 已弃用：Go 1.16+ 应使用 os 包中的 ReadFile
 	"strconv"
 
 	"gopkg.in/yaml.v2"
@@ -35,7 +34,7 @@ type Config struct {
 var AppConfig Config
 
 func LoadConfig(configPath string) error {
-	data, err := ioutil.ReadFile(configPath)
+	data, err := os.ReadFile(configPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			log.Printf("Config file %s not found, using environment variables", configPath)
