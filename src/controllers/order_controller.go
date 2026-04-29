@@ -50,8 +50,12 @@ func getFieldName(field string) string {
 		return "地点"
 	case "Content":
 		return "内容"
-	case "Fee":
-		return "费用"
+	case "Income":
+		return "收入"
+	case "Deposit":
+		return "定金"
+	case "Balance":
+		return "尾款"
 	case "Shop":
 		return "店铺"
 	default:
@@ -117,10 +121,10 @@ func GetOrders(c *gin.Context) {
 	switch sort {
 	case "date_asc":
 		db = db.Order("date ASC")
-	case "fee_desc":
-		db = db.Order("fee DESC")
-	case "fee_asc":
-		db = db.Order("fee ASC")
+	case "income_desc":
+		db = db.Order("income DESC")
+	case "income_asc":
+		db = db.Order("income ASC")
 	default:
 		db = db.Order("date DESC")
 	}
@@ -169,6 +173,11 @@ func CreateOrder(c *gin.Context) {
 		return
 	}
 	order.UserID = userID
+	if order.Settled {
+		order.Income = order.Deposit + order.Balance
+	} else {
+		order.Income = order.Deposit
+	}
 	if err := database.DB.Create(&order).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -197,6 +206,11 @@ func UpdateOrder(c *gin.Context) {
 		return
 	}
 	order.UserID = userID
+	if order.Settled {
+		order.Income = order.Deposit + order.Balance
+	} else {
+		order.Income = order.Deposit
+	}
 	database.DB.Save(&order)
 	c.JSON(http.StatusOK, order)
 }
@@ -335,7 +349,7 @@ func ExportOrdersCSV(c *gin.Context) {
 	writer := csv.NewWriter(c.Writer)
 	defer writer.Flush()
 
-	headers := []string{"ID", "日期", "地点", "内容", "费用", "已结算", "店铺"}
+	headers := []string{"ID", "日期", "地点", "内容", "店铺", "定金", "尾款", "已结算", "收入"}
 	if err := writer.Write(headers); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to write CSV headers"})
 		return
@@ -352,9 +366,11 @@ func ExportOrdersCSV(c *gin.Context) {
 			extractDatePart(order.Date),
 			order.Location,
 			order.Content,
-			strconv.FormatFloat(order.Fee, 'f', 2, 64),
-			settledStr,
 			order.Shop,
+			strconv.FormatFloat(order.Deposit, 'f', 2, 64),
+			strconv.FormatFloat(order.Balance, 'f', 2, 64),
+			settledStr,
+			strconv.FormatFloat(order.Income, 'f', 2, 64),
 		}
 		if err := writer.Write(row); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to write CSV row"})
@@ -400,7 +416,7 @@ func ExportStatsCSV(c *gin.Context) {
 	writer := csv.NewWriter(c.Writer)
 	defer writer.Flush()
 
-	headers := []string{"日期", "店铺", "地点", "内容", "费用", "已结算"}
+	headers := []string{"日期", "地点", "内容", "店铺", "定金", "尾款", "已结算", "收入"}
 	if err := writer.Write(headers); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to write CSV headers"})
 		return
@@ -414,11 +430,13 @@ func ExportStatsCSV(c *gin.Context) {
 
 		row := []string{
 			extractDatePart(order.Date),
-			order.Shop,
 			order.Location,
 			order.Content,
-			strconv.FormatFloat(order.Fee, 'f', 2, 64),
+			order.Shop,
+			strconv.FormatFloat(order.Deposit, 'f', 2, 64),
+			strconv.FormatFloat(order.Balance, 'f', 2, 64),
 			settledStr,
+			strconv.FormatFloat(order.Income, 'f', 2, 64),
 		}
 		if err := writer.Write(row); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to write CSV row"})
@@ -461,7 +479,9 @@ func ImportOrdersCSV(c *gin.Context) {
 	shopIdx := -1
 	locationIdx := -1
 	contentIdx := -1
-	feeIdx := -1
+	incomeIdx := -1
+	depositIdx := -1
+	balanceIdx := -1
 	settledIdx := -1
 
 	for i, col := range header {
@@ -475,15 +495,19 @@ func ImportOrdersCSV(c *gin.Context) {
 			locationIdx = i
 		case "内容":
 			contentIdx = i
-		case "费用":
-			feeIdx = i
+		case "收入":
+			incomeIdx = i
+		case "定金":
+			depositIdx = i
+		case "尾款":
+			balanceIdx = i
 		case "已结算":
 			settledIdx = i
 		}
 	}
 
 	// 检查必要的列是否存在
-	if dateIdx == -1 || shopIdx == -1 || feeIdx == -1 || settledIdx == -1 {
+	if dateIdx == -1 || shopIdx == -1 || settledIdx == -1 {
 		var missingColumns []string
 		if dateIdx == -1 {
 			missingColumns = append(missingColumns, "日期")
@@ -491,15 +515,12 @@ func ImportOrdersCSV(c *gin.Context) {
 		if shopIdx == -1 {
 			missingColumns = append(missingColumns, "店铺")
 		}
-		if feeIdx == -1 {
-			missingColumns = append(missingColumns, "费用")
-		}
 		if settledIdx == -1 {
 			missingColumns = append(missingColumns, "已结算")
 		}
 
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": fmt.Sprintf("CSV格式不正确，缺少必要的列：%s\n期望的CSV格式示例：\n日期,店铺,地点,内容,费用,已结算\n2026-04-29,示例店,北京,购买商品,100.00,否",
+			"error": fmt.Sprintf("CSV格式不正确，缺少必要的列：%s\n期望的CSV格式示例：\n日期,店铺,地点,内容,定金,尾款,已结算\n2026-04-29,示例店,北京,购买商品,500.00,500.00,否",
 				strings.Join(missingColumns, "、"))})
 		return
 	}
@@ -524,15 +545,14 @@ func ImportOrdersCSV(c *gin.Context) {
 			continue
 		}
 
-		if len(record) <= dateIdx || len(record) <= shopIdx || len(record) <= feeIdx || len(record) <= settledIdx {
+		if len(record) <= dateIdx || len(record) <= shopIdx || len(record) <= settledIdx {
 			failedCount++
-			errors = append(errors, fmt.Sprintf("第%d行: 数据列数不足，请确保包含所有必要的列（日期、店铺、费用、已结算）", i+1))
+			errors = append(errors, fmt.Sprintf("第%d行: 数据列数不足，请确保包含所有必要的列（日期、店铺、已结算）", i+1))
 			continue
 		}
 
 		date := strings.TrimSpace(record[dateIdx])
 		shop := strings.TrimSpace(record[shopIdx])
-		feeStr := strings.TrimSpace(record[feeIdx])
 		settledStr := strings.TrimSpace(record[settledIdx])
 
 		var location, content string
@@ -554,14 +574,49 @@ func ImportOrdersCSV(c *gin.Context) {
 			date = date[:10]
 		}
 
-		fee, err := strconv.ParseFloat(feeStr, 64)
-		if err != nil {
-			failedCount++
-			errors = append(errors, fmt.Sprintf("第%d行: 费用格式不正确，请填写数字（例如：100.00）", i+1))
-			continue
+		// 解析定金
+		var deposit float64 = 0.0
+		if depositIdx != -1 && len(record) > depositIdx {
+			depositStr := strings.TrimSpace(record[depositIdx])
+			if depositStr != "" {
+				d, err := strconv.ParseFloat(depositStr, 64)
+				if err == nil {
+					deposit = d
+				}
+			}
+		}
+
+		// 解析尾款
+		var balance float64 = 0.0
+		if balanceIdx != -1 && len(record) > balanceIdx {
+			balanceStr := strings.TrimSpace(record[balanceIdx])
+			if balanceStr != "" {
+				b, err := strconv.ParseFloat(balanceStr, 64)
+				if err == nil {
+					balance = b
+				}
+			}
 		}
 
 		settled := settledStr == "是" || settledStr == "true" || settledStr == "1"
+
+		// 根据结算状态计算收入
+		var income float64
+		if settled {
+			income = deposit + balance
+		} else {
+			income = deposit
+		}
+		// 如果CSV中指定了收入，且自动计算的收入为0，则使用CSV中的值
+		if income == 0 && incomeIdx != -1 && len(record) > incomeIdx {
+			incomeStr := strings.TrimSpace(record[incomeIdx])
+			if incomeStr != "" {
+				f, err := strconv.ParseFloat(incomeStr, 64)
+				if err == nil {
+					income = f
+				}
+			}
+		}
 
 		// 检查并自动创建shop（使用缓存map）
 		if !shopCache[shop] {
@@ -597,7 +652,9 @@ func ImportOrdersCSV(c *gin.Context) {
 			Date:     date,
 			Location: location,
 			Content:  content,
-			Fee:      fee,
+			Income:   income,
+			Deposit:  deposit,
+			Balance:  balance,
 			Settled:  settled,
 			Shop:     shop,
 		}

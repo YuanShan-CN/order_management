@@ -243,20 +243,20 @@
                     <div class="stat-label">未结算订单</div>
                 </div>
                 <div class="stat-card unsettled-card" onclick="filterUnsettled()">
-                    <div class="stat-value">¥<span id="unsettledIncome">0.00</span></div>
-                    <div class="stat-label">未结算收入</div>
-                </div>
+                        <div class="stat-value">¥<span id="unsettledIncome">0.00</span></div>
+                        <div class="stat-label" id="unsettledLabel">未结算尾款</div>
+                    </div>
             </div>
 
             <div class="chart-container">
-                <div class="chart-title">月度收入趋势</div>
+                <div class="chart-title" id="monthlyChartTitle">月度收入趋势</div>
                 <div class="chart-bars" id="monthlyChart">
                     <div class="empty-state">暂无数据</div>
                 </div>
             </div>
 
             <div class="table-container">
-                <div class="chart-title">店铺收入统计</div>
+                <div class="chart-title" id="shopStatsTitle">店铺收入统计</div>
                 <div class="tabs-container">
                     <div class="tab-item active" id="tableTab" onclick="switchShopTab('table')">表格</div>
                     <div class="tab-item mobile-hide" id="barTab" onclick="switchShopTab('bar')">条形图</div>
@@ -269,7 +269,7 @@
                                 <tr>
                                     <th class="sortable" onclick="sortShopStats('name')">店铺名称</th>
                                     <th class="sortable" onclick="sortShopStats('count')">订单数</th>
-                                    <th class="sortable desc" onclick="sortShopStats('income')">总收入</th>
+                                    <th class="sortable desc" id="incomeHeader" onclick="sortShopStats('income')">总收入</th>
                                 </tr>
                             </thead>
                             <tbody id="shopStats">
@@ -388,42 +388,42 @@
             const settled = document.getElementById('settledSelect').value;
             const shop = document.getElementById('shopSelect').value;
             
-            let summaryUrl = `${API_URL}?size=10000`;
+            let summaryOrders;
+            let filteredOrders;
+            
+            // 构建基础URL（包含年份、月份、店铺筛选）
+            let baseUrl = `${API_URL}?size=10000`;
             if (year !== 'all') {
-                summaryUrl += `&year=${year}`;
+                baseUrl += `&year=${year}`;
             }
             if (month !== 'all') {
-                summaryUrl += `&month=${month}`;
+                baseUrl += `&month=${month}`;
             }
             if (shop !== 'all') {
-                summaryUrl += `&shop=${encodeURIComponent(shop)}`;
+                baseUrl += `&shop=${encodeURIComponent(shop)}`;
             }
             
-            let filterUrl = `${API_URL}?size=10000`;
-            if (year !== 'all') {
-                filterUrl += `&year=${year}`;
-            }
-            if (month !== 'all') {
-                filterUrl += `&month=${month}`;
-            }
-            if (settled !== 'all') {
-                filterUrl += `&settled=${settled}`;
-            }
-            if (shop !== 'all') {
-                filterUrl += `&shop=${encodeURIComponent(shop)}`;
+            if (settled === 'all') {
+                // 当结算状态为"全部"时，只需要一次API调用
+                const response = await authFetch(baseUrl);
+                const result = await response.json();
+                summaryOrders = result.orders || result;
+                filteredOrders = summaryOrders;
+            } else {
+                // 当有结算状态筛选时，需要两次API调用
+                const summaryResponse = await authFetch(baseUrl);
+                const summaryResult = await summaryResponse.json();
+                summaryOrders = summaryResult.orders || summaryResult;
+                
+                const filterUrl = baseUrl + `&settled=${settled}`;
+                const filterResponse = await authFetch(filterUrl);
+                const filterResult = await filterResponse.json();
+                filteredOrders = filterResult.orders || filterResult;
             }
             
-            const summaryResponse = await authFetch(summaryUrl);
-            const summaryResult = await summaryResponse.json();
-            const summaryOrders = summaryResult.orders || summaryResult;
-            updateSummary(summaryOrders);
-            
-            const filterResponse = await authFetch(filterUrl);
-            const filterResult = await filterResponse.json();
-            const filteredOrders = filterResult.orders || filterResult;
-            
-            updateMonthlyChart(filteredOrders);
-            updateShopStats(filteredOrders);
+            updateSummary(summaryOrders, settled);
+            updateMonthlyChart(filteredOrders, settled);
+            updateShopStats(filteredOrders, settled);
             
             const activeTab = document.querySelector('.tab-item.active');
             if (activeTab) {
@@ -436,20 +436,41 @@
             }
         }
 
-        function updateSummary(orders) {
+        function updateSummary(orders, settledFilter) {
             const totalOrders = orders.length;
-            const totalIncome = orders.reduce((sum, o) => sum + o.fee, 0);
+            const totalIncome = orders.reduce((sum, o) => sum + (o.deposit || 0) + (o.balance || 0), 0);
+            const totalBalance = orders.reduce((sum, o) => sum + (o.balance || 0), 0);
             const settledOrders = orders.filter(o => o.settled).length;
-            const settledIncome = orders.filter(o => o.settled).reduce((sum, o) => sum + o.fee, 0);
+            const settledIncome = orders.filter(o => o.settled).reduce((sum, o) => sum + (o.income || 0), 0);
             const unsettledOrders = orders.filter(o => !o.settled).length;
-            const unsettledIncome = orders.filter(o => !o.settled).reduce((sum, o) => sum + o.fee, 0);
+            const unsettledIncome = orders.filter(o => !o.settled).reduce((sum, o) => sum + (o.balance || 0), 0);
+            const unsettledDeposit = orders.filter(o => !o.settled).reduce((sum, o) => sum + (o.deposit || 0), 0);
 
             document.getElementById('totalOrders').textContent = totalOrders;
-            document.getElementById('totalIncome').textContent = totalIncome.toFixed(2);
+            
+            if (settledFilter === 'unsettled') {
+                document.getElementById('totalIncome').textContent = totalBalance.toFixed(2);
+                document.getElementById('monthlyChartTitle').textContent = '月度尾款趋势';
+                document.getElementById('shopStatsTitle').textContent = '店铺尾款统计';
+                document.getElementById('incomeHeader').textContent = '总尾款';
+            } else {
+                document.getElementById('totalIncome').textContent = totalIncome.toFixed(2);
+                document.getElementById('monthlyChartTitle').textContent = '月度收入趋势';
+                document.getElementById('shopStatsTitle').textContent = '店铺收入统计';
+                document.getElementById('incomeHeader').textContent = '总收入';
+            }
+            
             document.getElementById('settledOrders').textContent = settledOrders;
             document.getElementById('settledIncome').textContent = settledIncome.toFixed(2);
             document.getElementById('unsettledOrders').textContent = unsettledOrders;
             document.getElementById('unsettledIncome').textContent = unsettledIncome.toFixed(2);
+            
+            const unsettledLabel = document.getElementById('unsettledLabel');
+            if (unsettledDeposit > 0) {
+                unsettledLabel.textContent = '未结算尾款 已收定金' + unsettledDeposit.toFixed(2);
+            } else {
+                unsettledLabel.textContent = '未结算尾款';
+            }
         }
 
         function filterAll() {
@@ -467,7 +488,7 @@
             loadStats();
         }
 
-        function updateMonthlyChart(orders) {
+        function updateMonthlyChart(orders, settledFilter) {
             const monthlyData = {};
             for (let i = 1; i <= 12; i++) {
                 monthlyData[i] = 0;
@@ -475,7 +496,11 @@
 
             orders.forEach(order => {
                 const month = new Date(order.date).getMonth() + 1;
-                monthlyData[month] += order.fee;
+                if (settledFilter === 'unsettled') {
+                    monthlyData[month] += (order.balance || 0);
+                } else {
+                    monthlyData[month] += (order.deposit || 0) + (order.balance || 0);
+                }
             });
 
             const maxValue = Math.max(...Object.values(monthlyData), 1);
@@ -496,7 +521,7 @@
             document.getElementById('monthlyChart').innerHTML = bars;
         }
 
-        function updateShopStats(orders) {
+        function updateShopStats(orders, settledFilter) {
             const shopData = {};
             orders.forEach(order => {
                 const shop = order.shop || '未指定';
@@ -504,7 +529,11 @@
                     shopData[shop] = { count: 0, income: 0, orders: [] };
                 }
                 shopData[shop].count++;
-                shopData[shop].income += order.fee;
+                if (settledFilter === 'unsettled') {
+                    shopData[shop].income += (order.balance || 0);
+                } else {
+                    shopData[shop].income += (order.deposit || 0) + (order.balance || 0);
+                }
                 shopData[shop].orders.push(order);
             });
 
@@ -544,8 +573,8 @@
                         case 'date':
                             comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
                             break;
-                        case 'fee':
-                            comparison = a.fee - b.fee;
+                        case 'income':
+                            comparison = (a.income || (a.deposit || 0) + (a.balance || 0)) - (b.income || (b.deposit || 0) + (b.balance || 0));
                             break;
                         case 'location':
                             comparison = (a.location || '').localeCompare(b.location || '', 'zh-CN');
@@ -554,10 +583,10 @@
                     return detailsSortOrder === 'asc' ? comparison : -comparison;
                 });
 
-                const totalFee = sortedOrders.reduce((sum, o) => sum + o.fee, 0);
+                const totalFee = sortedOrders.reduce((sum, o) => sum + ((o.deposit || 0) + (o.settled ? (o.balance || 0) : 0)), 0);
                 const detailsHtml = isExpanded ? `
                     <tr class="details-row">
-                        <td colspan="3">
+                        <td colspan="5">
                             <div class="details-content">
                                 <div class="table-wrapper">
                                     <table class="details-table">
@@ -566,8 +595,10 @@
                                             <th class="details-sortable ${detailsSortField === 'date' ? detailsSortOrder : ''}" onclick="sortDetails('date')">日期</th>
                                             <th class="details-sortable ${detailsSortField === 'location' ? detailsSortOrder : ''}" onclick="sortDetails('location')">地点</th>
                                             <th>内容</th>
+                                            <th>定金</th>
+                                            <th>尾款</th>
                                             <th class="details-sortable ${detailsSortField === 'settled' ? detailsSortOrder : ''}" onclick="sortDetails('settled')">结算</th>
-                                            <th class="details-sortable ${detailsSortField === 'fee' ? detailsSortOrder : ''}" onclick="sortDetails('fee')">费用</th>
+                                            <th class="details-sortable ${detailsSortField === 'income' ? detailsSortOrder : ''}" onclick="sortDetails('income')">收入</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -576,12 +607,14 @@
                                                 <td>${formatDate(order.date)}</td>
                                                 <td>${order.location || '-'}</td>
                                                 <td>${order.content || '-'}</td>
+                                                <td>¥${(order.deposit || 0).toFixed(2)}</td>
+                                                <td>¥${(order.balance || 0).toFixed(2)}</td>
                                                 <td>${order.settled ? '<span style="color: #4CAF50;">是</span>' : '<span style="color: #FF9800;">否</span>'}</td>
-                                                <td>¥${order.fee.toFixed(2)}</td>
+                                                <td>¥${((order.deposit || 0) + (order.settled ? (order.balance || 0) : 0)).toFixed(2)}</td>
                                             </tr>
                                         `).join('')}
                                         <tr style="background: #f8f9fa; font-weight: 600;">
-                                            <td colspan="3" style="color: #666;">合计</td>
+                                            <td colspan="5" style="color: #666;">合计</td>
                                             <td style="color: #666;">共 ${sortedOrders.length} 条</td>
                                             <td style="color: #4CAF50;">¥${totalFee.toFixed(2)}</td>
                                         </tr>
@@ -734,6 +767,7 @@
                 `;
             }).join('');
             
+            const pieCenterLabel = document.getElementById('incomeHeader').textContent;
             const pieHtml = `
                 <div class="pie-container">
                     <div class="pie-chart" style="background: conic-gradient(${gradient});"></div>
@@ -742,7 +776,7 @@
                     </svg>
                     <div class="pie-center">
                         <div class="pie-center-total">¥${totalIncome.toFixed(2)}</div>
-                        <div class="pie-center-label">总收入</div>
+                        <div class="pie-center-label">${pieCenterLabel}</div>
                     </div>
                     <div class="pie-tooltip" id="pieTooltip" style="display: none;">
                         <div class="tooltip-name"></div>
