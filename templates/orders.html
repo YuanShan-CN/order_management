@@ -947,10 +947,10 @@
                 
                 calendar.innerHTML = html;
                 
-                calendar.querySelector('.prev-month-btn').addEventListener('click', prevMonth);
-                calendar.querySelector('.next-month-btn').addEventListener('click', nextMonth);
-                calendar.querySelector('.date-picker-clear-btn').addEventListener('click', clearDate);
-                calendar.querySelector('.date-picker-today-btn').addEventListener('click', selectToday);
+                calendar.querySelector('.prev-month-btn').addEventListener('click', (e) => prevMonth(e));
+                calendar.querySelector('.next-month-btn').addEventListener('click', (e) => nextMonth(e));
+                calendar.querySelector('.date-picker-clear-btn').addEventListener('click', (e) => clearDate(e));
+                calendar.querySelector('.date-picker-today-btn').addEventListener('click', (e) => selectToday(e));
                 
                 calendar.querySelectorAll('.date-picker-day').forEach(dayEl => {
                     dayEl.addEventListener('click', function() {
@@ -968,12 +968,14 @@
                        date1.getDate() === date2.getDate();
             }
             
-            function prevMonth() {
+            function prevMonth(e) {
+                if (e) e.stopPropagation();
                 currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
                 renderCalendar();
             }
             
-            function nextMonth() {
+            function nextMonth(e) {
+                if (e) e.stopPropagation();
                 currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
                 renderCalendar();
             }
@@ -986,7 +988,8 @@
                 input.dispatchEvent(new Event('change'));
             }
             
-            function selectToday() {
+            function selectToday(e) {
+                if (e) e.stopPropagation();
                 currentDate = new Date();
                 selectedDate = new Date();
                 const year = selectedDate.getFullYear();
@@ -998,7 +1001,8 @@
                 input.dispatchEvent(new Event('change'));
             }
             
-            function clearDate() {
+            function clearDate(e) {
+                if (e) e.stopPropagation();
                 input.value = '';
                 selectedDate = null;
                 calendar.classList.remove('show');

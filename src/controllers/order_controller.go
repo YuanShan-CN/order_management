@@ -15,6 +15,245 @@ import (
 	"gorm.io/gorm"
 )
 
+type StatsSummary struct {
+	TotalOrders      int64   `json:"totalOrders"`
+	TotalIncome      float64 `json:"totalIncome"`
+	SettledOrders    int64   `json:"settledOrders"`
+	SettledIncome    float64 `json:"settledIncome"`
+	UnsettledOrders  int64   `json:"unsettledOrders"`
+	UnsettledIncome  float64 `json:"unsettledIncome"`
+	UnsettledDeposit float64 `json:"unsettledDeposit"`
+}
+
+type MonthlyStat struct {
+	Month  int     `json:"month"`
+	Income float64 `json:"income"`
+}
+
+type ShopStat struct {
+	Name   string  `json:"name"`
+	Count  int     `json:"count"`
+	Income float64 `json:"income"`
+}
+
+type UnifiedStatsResponse struct {
+	Summary StatsSummary  `json:"summary"`
+	Monthly []MonthlyStat `json:"monthly"`
+	Shops   []ShopStat    `json:"shops"`
+}
+
+type PaginatedOrdersResponse struct {
+	Orders      []models.Order `json:"orders"`
+	CurrentPage int            `json:"currentPage"`
+	TotalPages  int            `json:"totalPages"`
+	TotalOrders int64          `json:"totalOrders"`
+	PageSize    int            `json:"pageSize"`
+}
+
+func GetUnifiedStats(c *gin.Context) {
+	userID := getUserID(c)
+
+	year := c.Query("year")
+	month := c.Query("month")
+	settled := c.Query("settled")
+	shop := c.Query("shop")
+
+	var response UnifiedStatsResponse
+
+	db := buildStatsQuery(userID, year, month, "all", shop).Model(&models.Order{})
+	if err := db.Select(`
+		COUNT(*) as total_orders,
+		COALESCE(SUM(deposit + balance), 0) as total_income,
+		SUM(CASE WHEN settled = true THEN 1 ELSE 0 END) as settled_orders,
+		COALESCE(SUM(CASE WHEN settled = true THEN income ELSE 0 END), 0) as settled_income,
+		SUM(CASE WHEN settled = false THEN 1 ELSE 0 END) as unsettled_orders,
+		COALESCE(SUM(CASE WHEN settled = false THEN balance ELSE 0 END), 0) as unsettled_income,
+		COALESCE(SUM(CASE WHEN settled = false THEN deposit ELSE 0 END), 0) as unsettled_deposit
+	`).Scan(&response.Summary).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "查询统计数据失败"})
+		return
+	}
+
+	db = buildStatsQuery(userID, year, month, settled, shop).Model(&models.Order{})
+	var monthlyStats []MonthlyStat
+	if settled == "unsettled" {
+		db.Select("MONTH(date) as month, COALESCE(SUM(balance), 0) as income").
+			Group("MONTH(date)").Order("month").Scan(&monthlyStats)
+	} else {
+		db.Select("MONTH(date) as month, COALESCE(SUM(deposit + balance), 0) as income").
+			Group("MONTH(date)").Order("month").Scan(&monthlyStats)
+	}
+	response.Monthly = make([]MonthlyStat, 12)
+	for i := 0; i < 12; i++ {
+		response.Monthly[i] = MonthlyStat{Month: i + 1, Income: 0}
+	}
+	for _, stat := range monthlyStats {
+		if stat.Month >= 1 && stat.Month <= 12 {
+			response.Monthly[stat.Month-1] = stat
+		}
+	}
+
+	db = buildStatsQuery(userID, year, month, settled, shop).Model(&models.Order{})
+	var shopStats []ShopStat
+	if settled == "unsettled" {
+		db.Select("shop as name, COUNT(*) as count, COALESCE(SUM(balance), 0) as income").
+			Group("shop").Order("income DESC").Scan(&shopStats)
+	} else {
+		db.Select("shop as name, COUNT(*) as count, COALESCE(SUM(deposit + balance), 0) as income").
+			Group("shop").Order("income DESC").Scan(&shopStats)
+	}
+	if shopStats == nil {
+		response.Shops = []ShopStat{}
+	} else {
+		response.Shops = shopStats
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+func buildStatsQuery(userID uint, year, month, settled, shop string) *gorm.DB {
+	db := database.DB.Where("deleted_at IS NULL AND user_id = ?", userID)
+
+	if year != "" && year != "all" {
+		db = db.Where("YEAR(date) = ?", year)
+	}
+
+	if month != "" && month != "all" {
+		db = db.Where("MONTH(date) = ?", month)
+	}
+
+	if settled == "settled" {
+		db = db.Where("settled = ?", true)
+	} else if settled == "unsettled" {
+		db = db.Where("settled = ?", false)
+	}
+
+	if shop != "" && shop != "all" {
+		db = db.Where("shop = ?", shop)
+	}
+
+	return db
+}
+
+func GetStatsSummary(c *gin.Context) {
+	userID := getUserID(c)
+
+	year := c.Query("year")
+	month := c.Query("month")
+	shop := c.Query("shop")
+
+	db := buildStatsQuery(userID, year, month, "all", shop).Model(&models.Order{})
+
+	var summary StatsSummary
+
+	db.Select(`
+		COUNT(*) as total_orders,
+		COALESCE(SUM(deposit + balance), 0) as total_income,
+		SUM(CASE WHEN settled = true THEN 1 ELSE 0 END) as settled_orders,
+		COALESCE(SUM(CASE WHEN settled = true THEN income ELSE 0 END), 0) as settled_income,
+		SUM(CASE WHEN settled = false THEN 1 ELSE 0 END) as unsettled_orders,
+		COALESCE(SUM(CASE WHEN settled = false THEN balance ELSE 0 END), 0) as unsettled_income,
+		COALESCE(SUM(CASE WHEN settled = false THEN deposit ELSE 0 END), 0) as unsettled_deposit
+	`).Scan(&summary)
+
+	c.JSON(http.StatusOK, summary)
+}
+
+func GetMonthlyStats(c *gin.Context) {
+	userID := getUserID(c)
+
+	year := c.Query("year")
+	month := c.Query("month")
+	settled := c.Query("settled")
+	shop := c.Query("shop")
+
+	db := buildStatsQuery(userID, year, month, settled, shop).Model(&models.Order{})
+
+	var monthlyStats []MonthlyStat
+
+	if settled == "unsettled" {
+		db.Select("MONTH(date) as month, SUM(balance) as income").
+			Group("MONTH(date)").
+			Order("month").
+			Scan(&monthlyStats)
+	} else {
+		db.Select("MONTH(date) as month, SUM(deposit + balance) as income").
+			Group("MONTH(date)").
+			Order("month").
+			Scan(&monthlyStats)
+	}
+
+	result := make([]MonthlyStat, 12)
+	for i := 0; i < 12; i++ {
+		result[i] = MonthlyStat{Month: i + 1, Income: 0}
+	}
+
+	for _, stat := range monthlyStats {
+		if stat.Month >= 1 && stat.Month <= 12 {
+			result[stat.Month-1] = stat
+		}
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
+func GetShopStats(c *gin.Context) {
+	userID := getUserID(c)
+
+	year := c.Query("year")
+	month := c.Query("month")
+	settled := c.Query("settled")
+	shop := c.Query("shop")
+
+	db := buildStatsQuery(userID, year, month, settled, shop).Model(&models.Order{})
+
+	var shopStats []ShopStat
+
+	if settled == "unsettled" {
+		db.Select("shop as name, COUNT(*) as count, SUM(balance) as income").
+			Group("shop").
+			Order("income DESC").
+			Scan(&shopStats)
+	} else {
+		db.Select("shop as name, COUNT(*) as count, SUM(deposit + balance) as income").
+			Group("shop").
+			Order("income DESC").
+			Scan(&shopStats)
+	}
+
+	c.JSON(http.StatusOK, shopStats)
+}
+
+func GetShopOrderDetails(c *gin.Context) {
+	userID := getUserID(c)
+
+	year := c.Query("year")
+	month := c.Query("month")
+	settled := c.Query("settled")
+	shopName := c.Query("shop")
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("size", "10"))
+
+	db := buildStatsQuery(userID, year, month, settled, shopName).Model(&models.Order{})
+
+	var total int64
+	db.Count(&total)
+
+	offset := (page - 1) * pageSize
+	var orders []models.Order
+	db.Order("date DESC").Offset(offset).Limit(pageSize).Find(&orders)
+
+	totalPages := (int(total) + pageSize - 1) / pageSize
+
+	c.JSON(http.StatusOK, PaginatedOrdersResponse{
+		Orders:      orders,
+		CurrentPage: page,
+		TotalPages:  totalPages,
+		TotalOrders: total,
+		PageSize:    pageSize,
+	})
+}
+
 var validate = validator.New()
 
 func validateOrder(order *models.Order) error {
