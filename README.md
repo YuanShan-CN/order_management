@@ -176,13 +176,13 @@ order_management/
 
 ### 环境变量 (.env)
 
-| 变量名 | 说明 | 默认值 |
-|-------|------|-------|
-| DB_HOST | 数据库主机 | db |
-| DB_PORT | 数据库端口 | 3306 |
-| DB_USER | 数据库用户名 | root |
-| DB_PASSWORD | 数据库密码 | - |
-| DB_NAME | 数据库名称 | order_management |
+| 变量名          | 说明     | 默认值               |
+| ------------ | ------ | ----------------- |
+| DB\_HOST     | 数据库主机  | db                |
+| DB\_PORT     | 数据库端口  | 3306              |
+| DB\_USER     | 数据库用户名 | root              |
+| DB\_PASSWORD | 数据库密码  | -                 |
+| DB\_NAME     | 数据库名称  | order\_management |
 
 ### 配置文件 (config.yaml)
 
@@ -203,11 +203,13 @@ jwt:
 ```
 
 **配置说明：**
+
 - `database`: 数据库连接信息
 - `server`: HTTP 服务器配置
 - `jwt`: JWT 认证配置，`secret` 请在生产环境修改为强密钥
 
 **注意：**
+
 - `config.yaml` 和 `.env` 都已在 `.gitignore` 中，不会被提交
 - 首次部署时，请从模板文件复制：
   ```bash
@@ -221,12 +223,14 @@ jwt:
 ### 导入 CSV 订单数据
 
 **通过前端页面导入（推荐）：**
+
 - 登录后访问订单管理页面 (`/orders`)
 - 点击紫色的 **📤 导入CSV** 按钮
 - 选择 CSV 文件并提交
 - 系统会自动创建缺失的店铺
 
 **CSV 格式要求：**
+
 - 必须包含列：日期、店铺、费用、已结算
 - 可选列：地点、内容
 - 已结算列填写"是"/"否" 或 "true"/"false" 或 "1"/"0"
@@ -234,6 +238,7 @@ jwt:
 - 支持导出的 orders.csv 和 stats.csv 格式
 
 **命令行导入（备用）：**
+
 ```bash
 # 设置环境变量
 export DB_PASSWORD=your_password
@@ -250,6 +255,7 @@ go run import_csv.go /path/to/orders.csv
 通过前端页面或 API 导出订单数据：
 
 **前端导出：**
+
 - 登录后访问订单管理页面 (`/orders`) 或收入统计页面 (`/stats`)
 - 设置筛选条件（可选）
 - 点击橙色的 **📥 导出CSV** 按钮
@@ -273,13 +279,13 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 **导出参数：**
 
-| 参数 | 说明 | 示例 |
-|-----|------|------|
-| search | 搜索关键词 | search=故宫 |
-| settled | 结算状态 | settled 或 unsettled |
-| year | 年份筛选 | year=2026 |
-| month | 月份筛选 | month=4 |
-| shop | 店铺筛选 | shop=某店铺 |
+| 参数      | 说明    | 示例                  |
+| ------- | ----- | ------------------- |
+| search  | 搜索关键词 | search=故宫           |
+| settled | 结算状态  | settled 或 unsettled |
+| year    | 年份筛选  | year=2026           |
+| month   | 月份筛选  | month=4             |
+| shop    | 店铺筛选  | shop=某店铺            |
 
 ### 导入 CSV 订单数据
 
@@ -298,23 +304,24 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 **CSV 文件格式要求：**
 
-| 列名 | 必填 | 说明 | 示例 |
-|-----|------|------|------|
-| 日期 | ✅ | 订单日期 | 2026-04-29 |
-| 店铺 | ✅ | 店铺名称（不存在自动创建） | 和颐轩 |
-| 地点 | ❌ | 拍摄地点 | 民族剧院 |
-| 内容 | ❌ | 订单描述 | 少儿古典舞 |
-| 定金 | ❌ | 定金金额（与费用二选一） | 500.00 |
-| 尾款 | ❌ | 尾款金额 | 1000.00 |
-| 费用 | ❌ | 总费用（与定金+尾款二选一） | 1500.00 |
-| 已结算 | ✅ | 结算状态 | 是/否, true/false, 1/0 |
-| 收入 | ❌ | 实际收入金额 | 1500.00 |
+| 列名  | 必填 | 说明             | 示例                   |
+| --- | -- | -------------- | -------------------- |
+| 日期  | ✅  | 订单日期           | 2026-04-29           |
+| 店铺  | ✅  | 店铺名称（不存在自动创建）  | 和颐轩                  |
+| 地点  | ❌  | 拍摄地点           | 民族剧院                 |
+| 内容  | ❌  | 订单描述           | 少儿古典舞                |
+| 定金  | ❌  | 定金金额           | 500.00               |
+| 尾款  | ❌  | 尾款金额           | 1000.00              |
+| 费用  | ❌  | 兼容旧格式（已废弃）     | 1500.00              |
+| 已结算 | ✅  | 结算状态           | 是/否, true/false, 1/0 |
+| 收入  | ❌  | 实际收入金额         | 1500.00              |
 
 **支持的 CSV 格式：**
-- `orders.csv` - 标准订单格式（日期、店铺、地点、内容、费用、已结算）
+- `orders.csv` - 标准订单格式（日期、店铺、地点、内容、定金、尾款、已结算）
 - `stats.csv` - 统计导出格式（日期、店铺、地点、内容、定金、尾款、已结算、收入）
 
 **导入响应示例：**
+
 ```json
 {
   "importedCount": 220,
@@ -326,6 +333,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 ```
 
 **错误响应示例：**
+
 ```json
 {
   "error": "CSV格式不正确，缺少必要的列：日期、店铺\n期望的CSV格式示例：\n日期,店铺,地点,内容,费用,已结算\n2026-04-29,示例店,北京,购买商品,100.00,否"
@@ -336,57 +344,57 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ### 认证接口
 
-| 方法 | 路径 | 描述 | 需要认证 |
-|-----|------|------|---------|
-| POST | /api/auth/login | 用户登录 | 否 |
-| POST | /api/auth/logout | 用户登出 | 否 |
-| GET | /api/auth/current | 获取当前用户 | 是 |
-| PUT | /api/auth/password | 修改密码 | 是 |
-| DELETE | /api/auth/account | 删除账号 | 是 |
+| 方法     | 路径                 | 描述     | 需要认证 |
+| ------ | ------------------ | ------ | ---- |
+| POST   | /api/auth/login    | 用户登录   | 否    |
+| POST   | /api/auth/logout   | 用户登出   | 否    |
+| GET    | /api/auth/current  | 获取当前用户 | 是    |
+| PUT    | /api/auth/password | 修改密码   | 是    |
+| DELETE | /api/auth/account  | 删除账号   | 是    |
 
 ### 订单接口
 
-| 方法 | 路径 | 描述 | 需要认证 |
-|-----|------|------|---------|
-| GET | /api/orders | 获取订单列表 | 是 |
-| GET | /api/orders/:id | 获取单个订单 | 是 |
-| POST | /api/orders | 创建订单 | 是 |
-| PUT | /api/orders/:id | 更新订单 | 是 |
-| DELETE | /api/orders/:id | 软删除订单 | 是 |
-| GET | /api/orders/trash | 获取回收站订单 | 是 |
-| POST | /api/orders/:id/restore | 恢复订单 | 是 |
-| DELETE | /api/orders/:id/force-delete | 永久删除订单 | 是 |
-| GET | /api/orders/export | 导出订单为 CSV | 是 |
-| GET | /api/orders/stats/export | 导出统计数据为 CSV | 是 |
-| GET | /api/orders/stats | 获取统一统计数据（摘要+月度+店铺） | 是 |
-| GET | /api/orders/stats/summary | 获取统计摘要 | 是 |
-| GET | /api/orders/stats/monthly | 获取月度收入趋势 | 是 |
-| GET | /api/orders/stats/shops | 获取店铺收入统计 | 是 |
-| GET | /api/orders/stats/shop-details | 获取店铺订单详情（分页） | 是 |
+| 方法     | 路径                             | 描述                 | 需要认证 |
+| ------ | ------------------------------ | ------------------ | ---- |
+| GET    | /api/orders                    | 获取订单列表             | 是    |
+| GET    | /api/orders/:id                | 获取单个订单             | 是    |
+| POST   | /api/orders                    | 创建订单               | 是    |
+| PUT    | /api/orders/:id                | 更新订单               | 是    |
+| DELETE | /api/orders/:id                | 软删除订单              | 是    |
+| GET    | /api/orders/trash              | 获取回收站订单            | 是    |
+| POST   | /api/orders/:id/restore        | 恢复订单               | 是    |
+| DELETE | /api/orders/:id/force-delete   | 永久删除订单             | 是    |
+| GET    | /api/orders/export             | 导出订单为 CSV          | 是    |
+| GET    | /api/orders/stats/export       | 导出统计数据为 CSV        | 是    |
+| GET    | /api/orders/stats              | 获取统一统计数据（摘要+月度+店铺） | 是    |
+| GET    | /api/orders/stats/summary      | 获取统计摘要             | 是    |
+| GET    | /api/orders/stats/monthly      | 获取月度收入趋势           | 是    |
+| GET    | /api/orders/stats/shops        | 获取店铺收入统计           | 是    |
+| GET    | /api/orders/stats/shop-details | 获取店铺订单详情（分页）       | 是    |
 
 ### 店铺接口
 
-| 方法 | 路径 | 描述 | 需要认证 |
-|-----|------|------|---------|
-| GET | /api/shops | 获取店铺列表 | 是 |
-| GET | /api/shops/:id | 获取单个店铺 | 是 |
-| POST | /api/shops | 创建店铺 | 是 |
-| PUT | /api/shops/:id | 更新店铺 | 是 |
-| DELETE | /api/shops/:id | 软删除店铺 | 是 |
-| GET | /api/shops/trash | 获取回收站店铺 | 是 |
-| POST | /api/shops/:id/restore | 恢复店铺 | 是 |
-| DELETE | /api/shops/:id/force-delete | 永久删除店铺 | 是 |
+| 方法     | 路径                          | 描述      | 需要认证 |
+| ------ | --------------------------- | ------- | ---- |
+| GET    | /api/shops                  | 获取店铺列表  | 是    |
+| GET    | /api/shops/:id              | 获取单个店铺  | 是    |
+| POST   | /api/shops                  | 创建店铺    | 是    |
+| PUT    | /api/shops/:id              | 更新店铺    | 是    |
+| DELETE | /api/shops/:id              | 软删除店铺   | 是    |
+| GET    | /api/shops/trash            | 获取回收站店铺 | 是    |
+| POST   | /api/shops/:id/restore      | 恢复店铺    | 是    |
+| DELETE | /api/shops/:id/force-delete | 永久删除店铺  | 是    |
 
 ## 📄 前端页面
 
-| 路径 | 描述 | 需要登录 |
-|-----|------|---------|
-| /login | 登录页面 | 否 |
-| / | 首页 | 否 |
-| /orders | 订单管理 | 是 |
-| /shops | 店铺维护 | 是 |
-| /stats | 收入统计 | 是 |
-| /trash | 回收站 | 是 |
+| 路径      | 描述   | 需要登录 |
+| ------- | ---- | ---- |
+| /login  | 登录页面 | 否    |
+| /       | 首页   | 否    |
+| /orders | 订单管理 | 是    |
+| /shops  | 店铺维护 | 是    |
+| /stats  | 收入统计 | 是    |
+| /trash  | 回收站  | 是    |
 
 ## 🔑 认证说明
 
@@ -402,6 +410,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 ### 日期格式
 
 系统使用 `YYYY-MM-DD` 格式处理所有日期：
+
 - 导入/导出 CSV 时只显示年月日
 - 前端日期选择器只选择年月日
 - 数据库使用 `DATE` 类型存储
@@ -414,12 +423,10 @@ curl -H "Authorization: Bearer $TOKEN" \
    - 使用 `DATE` 类型（仅存储年月日，无时间信息）
    - Go 层使用 `string` 类型而非 `time.Time`
    - 不涉及时区转换
-
 2. **处理逻辑**：
    - 所有日期处理基于字符串操作
    - 只截取前 10 个字符（YYYY-MM-DD）
    - 不使用时区敏感的时间解析
-
 3. **安全对比**：
    - ✅ `DATE` 类型 - 安全
    - ❌ `DATETIME` 类型 - 可能有时区问题
