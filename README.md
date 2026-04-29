@@ -93,6 +93,19 @@ go build -o order_management .
 ./order_management -c config.yaml
 ```
 
+### Docker 本地重新部署
+
+```bash
+# 停止并删除容器
+docker-compose down
+
+# 重新构建镜像（不使用缓存）
+docker-compose build --no-cache
+
+# 启动服务（后台运行）
+docker-compose up -d
+```
+
 ## 🔐 用户管理
 
 ### 创建初始用户
