@@ -104,7 +104,8 @@
                                 <th>日期</th>
                                 <th>地点</th>
                                 <th>内容</th>
-                                <th>费用</th>
+                                <th>定金</th>
+                                <th>尾款</th>
                                 <th>结算</th>
                                 <th>店铺</th>
                                 <th>操作</th>
@@ -226,7 +227,8 @@
                     <td>${formatDate(order.date)}</td>
                     <td>${order.location || '-'}</td>
                     <td>${order.content || '-'}</td>
-                    <td>¥${order.fee.toFixed(2)}</td>
+                    <td>¥${(order.deposit || 0).toFixed(2)}</td>
+                    <td>¥${(order.balance || 0).toFixed(2)}</td>
                     <td><span class="${order.settled ? 'status-yes' : 'status-no'}">${order.settled ? '是' : '否'}</span></td>
                     <td>${order.shop || '-'}</td>
                     <td class="actions">

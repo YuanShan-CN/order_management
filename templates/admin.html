@@ -120,8 +120,12 @@
                             <input type="text" id="location" placeholder="拍摄地点">
                         </div>
                         <div class="form-group">
-                            <label>费用</label>
-                            <input type="number" id="fee" step="0.01" placeholder="拍摄费用" required>
+                            <label>定金</label>
+                            <input type="number" id="deposit" step="0.01" placeholder="定金金额" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label>尾款</label>
+                            <input type="number" id="balance" step="0.01" placeholder="尾款金额" value="0">
                         </div>
                     </div>
                     <div class="form-row">
@@ -182,7 +186,8 @@
                         <th>日期</th>
                         <th>地点</th>
                         <th>内容</th>
-                        <th>费用</th>
+                        <th>定金</th>
+                        <th>尾款</th>
                         <th>结算</th>
                         <th>店铺</th>
                         <th>操作</th>
@@ -217,8 +222,12 @@
                         <input type="text" id="editLocation">
                     </div>
                     <div class="form-group">
-                        <label>费用</label>
-                        <input type="number" id="editFee" step="0.01" required>
+                        <label>定金</label>
+                        <input type="number" id="editDeposit" step="0.01" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label>尾款</label>
+                        <input type="number" id="editBalance" step="0.01" value="0">
                     </div>
                 </div>
                 <div class="form-row">
@@ -295,7 +304,8 @@
                     <td>${formatDate(order.date)}</td>
                     <td>${order.location || '-'}</td>
                     <td>${order.content || '-'}</td>
-                    <td>¥${order.fee.toFixed(2)}</td>
+                    <td>¥${(order.deposit || 0).toFixed(2)}</td>
+                    <td>¥${(order.balance || 0).toFixed(2)}</td>
                     <td><span class="${order.settled ? 'status-yes' : 'status-no'}">${order.settled ? '是' : '否'}</span></td>
                     <td>${order.shop || '-'}</td>
                     <td class="actions">
@@ -382,7 +392,8 @@
                 date: document.getElementById('date').value,
                 location: document.getElementById('location').value,
                 content: document.getElementById('content').value,
-                fee: parseFloat(document.getElementById('fee').value),
+                deposit: parseFloat(document.getElementById('deposit').value) || 0,
+                balance: parseFloat(document.getElementById('balance').value) || 0,
                 settled: document.getElementById('settled').value === 'true',
                 shop: document.getElementById('shop').value
             };
@@ -404,7 +415,8 @@
                     document.getElementById('editDate').value = formatDate(order.date);
                     document.getElementById('editLocation').value = order.location;
                     document.getElementById('editContent').value = order.content;
-                    document.getElementById('editFee').value = order.fee;
+                    document.getElementById('editDeposit').value = order.deposit || 0;
+                    document.getElementById('editBalance').value = order.balance || 0;
                     document.getElementById('editSettled').value = String(order.settled);
                     document.getElementById('editShop').value = order.shop || '';
                     document.getElementById('editModal').style.display = 'flex';
@@ -422,7 +434,8 @@
                 date: document.getElementById('editDate').value,
                 location: document.getElementById('editLocation').value,
                 content: document.getElementById('editContent').value,
-                fee: parseFloat(document.getElementById('editFee').value),
+                deposit: parseFloat(document.getElementById('editDeposit').value) || 0,
+                balance: parseFloat(document.getElementById('editBalance').value) || 0,
                 settled: document.getElementById('editSettled').value === 'true',
                 shop: document.getElementById('editShop').value
             };
