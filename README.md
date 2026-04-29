@@ -296,6 +296,24 @@ curl -H "Authorization: Bearer $TOKEN" \
   http://localhost:8081/api/orders/import
 ```
 
+**CSV 文件格式要求：**
+
+| 列名 | 必填 | 说明 | 示例 |
+|-----|------|------|------|
+| 日期 | ✅ | 订单日期 | 2026-04-29 |
+| 店铺 | ✅ | 店铺名称（不存在自动创建） | 和颐轩 |
+| 地点 | ❌ | 拍摄地点 | 民族剧院 |
+| 内容 | ❌ | 订单描述 | 少儿古典舞 |
+| 定金 | ❌ | 定金金额（与费用二选一） | 500.00 |
+| 尾款 | ❌ | 尾款金额 | 1000.00 |
+| 费用 | ❌ | 总费用（与定金+尾款二选一） | 1500.00 |
+| 已结算 | ✅ | 结算状态 | 是/否, true/false, 1/0 |
+| 收入 | ❌ | 实际收入金额 | 1500.00 |
+
+**支持的 CSV 格式：**
+- `orders.csv` - 标准订单格式（日期、店铺、地点、内容、费用、已结算）
+- `stats.csv` - 统计导出格式（日期、店铺、地点、内容、定金、尾款、已结算、收入）
+
 **导入响应示例：**
 ```json
 {
@@ -340,6 +358,11 @@ curl -H "Authorization: Bearer $TOKEN" \
 | DELETE | /api/orders/:id/force-delete | 永久删除订单 | 是 |
 | GET | /api/orders/export | 导出订单为 CSV | 是 |
 | GET | /api/orders/stats/export | 导出统计数据为 CSV | 是 |
+| GET | /api/orders/stats | 获取统一统计数据（摘要+月度+店铺） | 是 |
+| GET | /api/orders/stats/summary | 获取统计摘要 | 是 |
+| GET | /api/orders/stats/monthly | 获取月度收入趋势 | 是 |
+| GET | /api/orders/stats/shops | 获取店铺收入统计 | 是 |
+| GET | /api/orders/stats/shop-details | 获取店铺订单详情（分页） | 是 |
 
 ### 店铺接口
 
