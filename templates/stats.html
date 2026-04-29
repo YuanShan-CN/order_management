@@ -301,6 +301,10 @@
         let expandedShop = null;
         let detailsSortField = 'date';
         let detailsSortOrder = 'desc';
+        let currentOrders = {};
+        let currentPage = 1;
+        let totalPages = 1;
+        let totalOrders = 0;
 
         function getToken() {
             return localStorage.getItem('token');
@@ -382,90 +386,88 @@
             }
         }
 
+        function buildQueryString(params) {
+            return Object.entries(params)
+                .filter(([, value]) => value !== 'all' && value !== '')
+                .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+                .join('&');
+        }
+
         async function loadStats() {
             const year = document.getElementById('yearSelect').value;
             const month = document.getElementById('monthSelect').value;
             const settled = document.getElementById('settledSelect').value;
             const shop = document.getElementById('shopSelect').value;
             
-            let summaryOrders;
-            let filteredOrders;
+            const params = { year, month, settled, shop };
+            const queryString = buildQueryString(params);
             
-            // 构建基础URL（包含年份、月份、店铺筛选）
-            let baseUrl = `${API_URL}?size=10000`;
-            if (year !== 'all') {
-                baseUrl += `&year=${year}`;
-            }
-            if (month !== 'all') {
-                baseUrl += `&month=${month}`;
-            }
-            if (shop !== 'all') {
-                baseUrl += `&shop=${encodeURIComponent(shop)}`;
-            }
-            
-            if (settled === 'all') {
-                // 当结算状态为"全部"时，只需要一次API调用
-                const response = await authFetch(baseUrl);
-                const result = await response.json();
-                summaryOrders = result.orders || result;
-                filteredOrders = summaryOrders;
-            } else {
-                // 当有结算状态筛选时，需要两次API调用
-                const summaryResponse = await authFetch(baseUrl);
-                const summaryResult = await summaryResponse.json();
-                summaryOrders = summaryResult.orders || summaryResult;
+            try {
+                const response = await authFetch(`${API_URL}/stats?${queryString}`);
                 
-                const filterUrl = baseUrl + `&settled=${settled}`;
-                const filterResponse = await authFetch(filterUrl);
-                const filterResult = await filterResponse.json();
-                filteredOrders = filterResult.orders || filterResult;
-            }
-            
-            updateSummary(summaryOrders, settled);
-            updateMonthlyChart(filteredOrders, settled);
-            updateShopStats(filteredOrders, settled);
-            
-            const activeTab = document.querySelector('.tab-item.active');
-            if (activeTab) {
-                const tabId = activeTab.id;
-                if (tabId === 'barTab') {
-                    renderBarChart();
-                } else if (tabId === 'pieTab') {
-                    renderPieChart();
+                if (!response.ok) {
+                    throw new Error('服务器返回错误');
                 }
+                
+                const stats = await response.json();
+                
+                if (stats.error) {
+                    throw new Error(stats.error);
+                }
+                
+                const summary = stats.summary || {
+                    totalOrders: 0,
+                    totalIncome: 0,
+                    settledOrders: 0,
+                    settledIncome: 0,
+                    unsettledOrders: 0,
+                    unsettledIncome: 0,
+                    unsettledDeposit: 0
+                };
+                
+                const monthly = stats.monthly || Array(12).fill(null).map((_, i) => ({ month: i + 1, income: 0 }));
+                const shops = stats.shops || [];
+                
+                updateSummary(summary, settled);
+                updateMonthlyChart(monthly, settled);
+                updateShopStats(shops, settled);
+                
+                const activeTab = document.querySelector('.tab-item.active');
+                if (activeTab) {
+                    const tabId = activeTab.id;
+                    if (tabId === 'barTab') {
+                        renderBarChart();
+                    } else if (tabId === 'pieTab') {
+                        renderPieChart();
+                    }
+                }
+            } catch (error) {
+                console.error('加载统计数据失败:', error);
+                alert('加载统计数据失败，请重试');
             }
         }
 
-        function updateSummary(orders, settledFilter) {
-            const totalOrders = orders.length;
-            const totalIncome = orders.reduce((sum, o) => sum + (o.deposit || 0) + (o.balance || 0), 0);
-            const totalBalance = orders.reduce((sum, o) => sum + (o.balance || 0), 0);
-            const settledOrders = orders.filter(o => o.settled).length;
-            const settledIncome = orders.filter(o => o.settled).reduce((sum, o) => sum + (o.income || 0), 0);
-            const unsettledOrders = orders.filter(o => !o.settled).length;
-            const unsettledIncome = orders.filter(o => !o.settled).reduce((sum, o) => sum + (o.balance || 0), 0);
-            const unsettledDeposit = orders.filter(o => !o.settled).reduce((sum, o) => sum + (o.deposit || 0), 0);
-
-            document.getElementById('totalOrders').textContent = totalOrders;
+        function updateSummary(summary, settledFilter) {
+            document.getElementById('totalOrders').textContent = summary.totalOrders || 0;
+            document.getElementById('settledOrders').textContent = summary.settledOrders || 0;
+            document.getElementById('settledIncome').textContent = (summary.settledIncome || 0).toFixed(2);
+            document.getElementById('unsettledOrders').textContent = summary.unsettledOrders || 0;
+            document.getElementById('unsettledIncome').textContent = (summary.unsettledIncome || 0).toFixed(2);
+            
+            document.getElementById('totalIncome').textContent = (summary.totalIncome || 0).toFixed(2);
             
             if (settledFilter === 'unsettled') {
-                document.getElementById('totalIncome').textContent = totalBalance.toFixed(2);
                 document.getElementById('monthlyChartTitle').textContent = '月度尾款趋势';
                 document.getElementById('shopStatsTitle').textContent = '店铺尾款统计';
                 document.getElementById('incomeHeader').textContent = '总尾款';
             } else {
-                document.getElementById('totalIncome').textContent = totalIncome.toFixed(2);
                 document.getElementById('monthlyChartTitle').textContent = '月度收入趋势';
                 document.getElementById('shopStatsTitle').textContent = '店铺收入统计';
                 document.getElementById('incomeHeader').textContent = '总收入';
             }
             
-            document.getElementById('settledOrders').textContent = settledOrders;
-            document.getElementById('settledIncome').textContent = settledIncome.toFixed(2);
-            document.getElementById('unsettledOrders').textContent = unsettledOrders;
-            document.getElementById('unsettledIncome').textContent = unsettledIncome.toFixed(2);
-            
             const unsettledLabel = document.getElementById('unsettledLabel');
+            const unsettledDeposit = summary.unsettledDeposit || 0;
             if (unsettledDeposit > 0) {
                 unsettledLabel.textContent = '未结算尾款 已收定金' + unsettledDeposit.toFixed(2);
             } else {
@@ -488,32 +490,19 @@
             loadStats();
         }
 
-        function updateMonthlyChart(orders, settledFilter) {
-            const monthlyData = {};
-            for (let i = 1; i <= 12; i++) {
-                monthlyData[i] = 0;
-            }
-
-            orders.forEach(order => {
-                const month = new Date(order.date).getMonth() + 1;
-                if (settledFilter === 'unsettled') {
-                    monthlyData[month] += (order.balance || 0);
-                } else {
-                    monthlyData[month] += (order.deposit || 0) + (order.balance || 0);
-                }
-            });
-
-            const maxValue = Math.max(...Object.values(monthlyData), 1);
+        function updateMonthlyChart(monthlyData, settledFilter) {
+            const maxValue = Math.max(...monthlyData.map(d => d.income), 1);
             const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
             const maxBarHeight = 100;
 
-            const bars = Object.entries(monthlyData).map(([month, value]) => {
+            const bars = monthlyData.map((item, index) => {
+                const value = item.income || 0;
                 const height = value > 0 ? Math.max((value / maxValue) * maxBarHeight, 6) : 0;
                 return `
                     <div class="bar-container">
                         <div class="bar-value">¥${value.toFixed(0)}</div>
                         <div class="bar" style="height: ${height}px;"></div>
-                        <div class="bar-label">${months[month - 1]}</div>
+                        <div class="bar-label">${months[index]}</div>
                     </div>
                 `;
             }).join('');
@@ -521,33 +510,18 @@
             document.getElementById('monthlyChart').innerHTML = bars;
         }
 
-        function updateShopStats(orders, settledFilter) {
-            const shopData = {};
-            orders.forEach(order => {
-                const shop = order.shop || '未指定';
-                if (!shopData[shop]) {
-                    shopData[shop] = { count: 0, income: 0, orders: [] };
-                }
-                shopData[shop].count++;
-                if (settledFilter === 'unsettled') {
-                    shopData[shop].income += (order.balance || 0);
-                } else {
-                    shopData[shop].income += (order.deposit || 0) + (order.balance || 0);
-                }
-                shopData[shop].orders.push(order);
-            });
-
-            shopDataList = Object.entries(shopData).map(([name, data]) => ({
-                name,
-                count: data.count,
-                income: data.income,
-                orders: data.orders
+        function updateShopStats(shopStats, settledFilter) {
+            shopDataList = shopStats.map(item => ({
+                name: item.name || '未指定',
+                count: item.count || 0,
+                income: item.income || 0,
+                orders: []
             }));
 
             renderShopStats();
         }
 
-        function renderShopStats() {
+        function renderShopStats(ordersMap = {}) {
             const sortedList = [...shopDataList].sort((a, b) => {
                 let comparison = 0;
                 switch (currentSortField) {
@@ -566,8 +540,9 @@
 
             const rows = sortedList.map(item => {
                 const isExpanded = expandedShop === item.name;
+                const itemOrders = ordersMap[item.name] || [];
                 
-                const sortedOrders = [...item.orders].sort((a, b) => {
+                const sortedOrders = [...itemOrders].sort((a, b) => {
                     let comparison = 0;
                     switch (detailsSortField) {
                         case 'date':
@@ -584,7 +559,31 @@
                 });
 
                 const totalFee = sortedOrders.reduce((sum, o) => sum + ((o.deposit || 0) + (o.settled ? (o.balance || 0) : 0)), 0);
-                const detailsHtml = isExpanded ? `
+                
+                let paginationHtml = '';
+                if (isExpanded && totalPages > 1) {
+                    paginationHtml = `
+                        <div style="padding: 10px; text-align: center; border-top: 1px solid #eee; margin-top: 10px;">
+                            <div style="display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                <button class="btn" style="padding: 6px 12px; font-size: 12px;" 
+                                        onclick="toggleShopDetails('${item.name.replace(/'/g, "\\'")}', ${currentPage - 1})" 
+                                        ${currentPage === 1 ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>
+                                    上一页
+                                </button>
+                                <span style="font-size: 13px; color: #666;">
+                                    第 ${currentPage} / ${totalPages} 页 (共 ${totalOrders} 条)
+                                </span>
+                                <button class="btn" style="padding: 6px 12px; font-size: 12px;" 
+                                        onclick="toggleShopDetails('${item.name.replace(/'/g, "\\'")}', ${currentPage + 1})" 
+                                        ${currentPage === totalPages ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>
+                                    下一页
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                const detailsHtml = isExpanded && itemOrders.length > 0 ? `
                     <tr class="details-row">
                         <td colspan="5">
                             <div class="details-content">
@@ -615,12 +614,13 @@
                                         `).join('')}
                                         <tr style="background: #f8f9fa; font-weight: 600;">
                                             <td colspan="5" style="color: #666;">合计</td>
-                                            <td style="color: #666;">共 ${sortedOrders.length} 条</td>
+                                            <td style="color: #666;">本页 ${sortedOrders.length} 条</td>
                                             <td style="color: #4CAF50;">¥${totalFee.toFixed(2)}</td>
                                         </tr>
                                     </tbody>
                                     </table>
                                 </div>
+                                ${paginationHtml}
                             </div>
                         </td>
                     </tr>
@@ -639,9 +639,34 @@
             document.getElementById('shopStats').innerHTML = rows || '<tr><td colspan="3" class="empty-state">暂无数据</td></tr>';
         }
 
-        function toggleShopDetails(shopName) {
-            expandedShop = expandedShop === shopName ? null : shopName;
-            renderShopStats();
+        async function toggleShopDetails(shopName, page = 1) {
+            if (expandedShop === shopName && page === 1) {
+                expandedShop = null;
+                renderShopStats();
+                return;
+            }
+            
+            expandedShop = shopName;
+            currentPage = page;
+            
+            const year = document.getElementById('yearSelect').value;
+            const month = document.getElementById('monthSelect').value;
+            const settled = document.getElementById('settledSelect').value;
+            
+            const params = { year, month, settled, shop: shopName, page: page, size: 10 };
+            const queryString = buildQueryString(params);
+            
+            try {
+                const response = await authFetch(`${API_URL}/stats/shop-details?${queryString}`);
+                const result = await response.json();
+                totalPages = result.totalPages || 1;
+                totalOrders = result.totalOrders || 0;
+                const ordersMap = { [shopName]: result.orders || [] };
+                renderShopStats(ordersMap);
+            } catch (error) {
+                console.error('加载店铺订单详情失败:', error);
+                renderShopStats();
+            }
         }
 
         function formatDate(dateStr) {
