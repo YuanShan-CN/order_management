@@ -46,6 +46,7 @@ cp config.yaml.example config.yaml
 # 编辑 config.yaml 文件，根据需要修改数据库连接信息和 JWT 密钥
 
 # 4. 启动服务
+docker-compose build --no-cache
 docker-compose up -d
 
 # 5. 等待服务启动 (约5秒)
