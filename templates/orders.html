@@ -47,9 +47,25 @@
         .close-modal:hover { color: #333; }
         .total-info { text-align: right; margin-bottom: 15px; color: #666; }
         .total-amount { color: #4CAF50; font-weight: 600; font-size: 18px; }
-        .search-bar { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
-        .search-input { flex: 1; min-width: 200px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
-        .sort-select { padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        .search-bar-container { background: white; border-radius: 10px; padding: 16px 20px; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06); margin-bottom: 20px; }
+        .filter-row { display: flex; gap: 20px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+        .filter-group { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+        .search-input { flex: 1; min-width: 200px; max-width: 300px; height: 40px; padding: 0 14px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; background: #fafafa; transition: all 0.25s ease; }
+        .search-input:focus { outline: none; border-color: #667eea; background: white; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+        .search-input::placeholder { color: #9ca3af; }
+        .filter-select { width: auto !important; min-width: 110px; max-width: 135px; height: 40px; padding: 0 14px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; background: white; cursor: pointer; transition: all 0.25s ease; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; background-size: 14px; }
+        .filter-select:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+        .action-buttons { display: flex; gap: 8px; align-items: center; padding-left: 20px; border-left: 1px solid #e5e7eb; }
+        .btn-search { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; padding: 10px 20px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.25s ease; }
+        .btn-search:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); }
+        .btn-reset { background: #f3f4f6; color: #4b5563; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 20px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.25s ease; }
+        .btn-reset:hover { background: #e5e7eb; }
+        .btn-import { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; padding: 10px 18px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.25s ease; }
+        .btn-import:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); }
+        .btn-export { background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%); color: white; border: none; border-radius: 8px; padding: 10px 18px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.25s ease; }
+        .btn-export:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3); }
+        .btn-add { background: linear-gradient(135deg, #4caf50 0%, #43a047 100%); color: white; border: none; border-radius: 8px; padding: 10px 22px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.25s ease; }
+        .btn-add:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3); }
         .add-btn { margin-left: auto; }
         .collapse-header { background: #f8f9fa; padding: 15px; border-radius: 8px; cursor: pointer; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
         .collapse-header:hover { background: #eee; }
@@ -161,22 +177,42 @@
                 <button class="btn btn-danger" onclick="location.href='/trash?tab=order'">🗑️ 回收站</button>
             </div>
 
-            <div class="search-bar">
-                <input type="text" id="searchInput" class="search-input" placeholder="搜索地点、内容、店铺..." onkeyup="handleSearch">
-                <select id="sortSelect" class="sort-select" onchange="loadOrders()">
-                    <option value="date_desc">按日期降序</option>
-                    <option value="date_asc">按日期升序</option>
-                    <option value="income_desc">按收入降序</option>
-                    <option value="income_asc">按收入升序</option>
-                </select>
-                <select id="filterSettled" class="sort-select" onchange="loadOrders()">
-                    <option value="all">全部状态</option>
-                    <option value="settled">已结算</option>
-                    <option value="unsettled">未结算</option>
-                </select>
-                <button class="btn" style="background: #9C27B0; color: white; margin-left: auto;" onclick="openImportModal()">📤 导入CSV</button>
-		<button class="btn" style="background: #FF9800; color: white;" onclick="exportCSV()">📥 导出CSV</button>
-		<button class="btn btn-primary" onclick="toggleCollapse()">添加新订单</button>
+            <div class="search-bar-container">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <input type="text" id="searchInput" class="search-input" placeholder="搜索地点、内容、店铺..." onkeyup="handleSearch(event)">
+                        <select id="yearFilter" class="filter-select">
+                            <option value="all">全部年份</option>
+                        </select>
+                        <select id="monthFilter" class="filter-select">
+                            <option value="all">全部月份</option>
+                            <option value="1">一月</option>
+                            <option value="2">二月</option>
+                            <option value="3">三月</option>
+                            <option value="4">四月</option>
+                            <option value="5">五月</option>
+                            <option value="6">六月</option>
+                            <option value="7">七月</option>
+                            <option value="8">八月</option>
+                            <option value="9">九月</option>
+                            <option value="10">十月</option>
+                            <option value="11">十一月</option>
+                            <option value="12">十二月</option>
+                        </select>
+                        <select id="filterSettled" class="filter-select">
+                            <option value="all">全部状态</option>
+                            <option value="settled">已结算</option>
+                            <option value="unsettled">未结算</option>
+                        </select>
+                        <button class="btn btn-search" onclick="loadOrders()">🔍 查询</button>
+                        <button class="btn btn-reset" onclick="resetFilters()">↺ 重置</button>
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn btn-import" onclick="openImportModal()">📤 导入CSV</button>
+    				    <button class="btn btn-export" onclick="exportCSV()">📥 导出CSV</button>
+    				    <button class="btn btn-add" onclick="toggleCollapse()">添加新订单</button>
+                    </div>
+                </div>
             </div>
 
             <div class="collapse-header" onclick="toggleCollapse()">
@@ -402,6 +438,8 @@
         let searchKeyword = '';
         let sortBy = 'date_desc';
         let settledFilter = 'all';
+        let yearFilter = 'all';
+        let monthFilter = 'all';
         const pageSize = 15;
 
         function getToken() {
@@ -474,6 +512,12 @@
             let url = `${API_URL}?page=${currentPage}&size=${pageSize}&sort=${sortBy}&settled=${settledFilter}`;
             if (searchKeyword) {
                 url += `&search=${encodeURIComponent(searchKeyword)}`;
+            }
+            if (yearFilter !== 'all') {
+                url += `&year=${yearFilter}`;
+            }
+            if (monthFilter !== 'all') {
+                url += `&month=${monthFilter}`;
             }
             
             const response = await authFetch(url);
@@ -566,11 +610,24 @@
         }
 
         function handleSearch(event) {
+            searchKeyword = document.getElementById('searchInput').value.trim();
             if (event.key === 'Enter') {
-                searchKeyword = document.getElementById('searchInput').value.trim();
                 currentPage = 1;
                 loadOrders();
             }
+        }
+
+        function resetFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('yearFilter').value = 'all';
+            document.getElementById('monthFilter').value = 'all';
+            document.getElementById('filterSettled').value = 'all';
+            searchKeyword = '';
+            yearFilter = 'all';
+            monthFilter = 'all';
+            settledFilter = 'all';
+            currentPage = 1;
+            loadOrders();
         }
 
         document.getElementById('searchInput').addEventListener('keyup', handleSearch);
@@ -582,20 +639,22 @@
             } else {
                 sortBy = `${field}_desc`;
             }
-            document.getElementById('sortSelect').value = sortBy;
             loadOrders();
         }
-
-        document.getElementById('sortSelect').addEventListener('change', () => {
-            sortBy = document.getElementById('sortSelect').value;
-            currentPage = 1;
-            loadOrders();
-        });
 
         document.getElementById('filterSettled').addEventListener('change', () => {
             settledFilter = document.getElementById('filterSettled').value;
             currentPage = 1;
-            loadOrders();
+        });
+
+        document.getElementById('yearFilter').addEventListener('change', () => {
+            yearFilter = document.getElementById('yearFilter').value;
+            currentPage = 1;
+        });
+
+        document.getElementById('monthFilter').addEventListener('change', () => {
+            monthFilter = document.getElementById('monthFilter').value;
+            currentPage = 1;
         });
 
         function formatDate(dateStr) {
@@ -1037,8 +1096,20 @@
             return `${year}-${month}-${day}`;
         }
 
+        function initYearFilter() {
+            const yearSelect = document.getElementById('yearFilter');
+            const currentYear = new Date().getFullYear();
+            for (let i = currentYear; i >= currentYear - 10; i--) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = i + '年';
+                yearSelect.appendChild(option);
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('date').value = getTodayDate();
+            initYearFilter();
             loadOrders();
             loadShops();
             createDatePicker('date');
