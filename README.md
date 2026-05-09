@@ -100,10 +100,10 @@ go build -o order_management .
 docker-compose down
 
 # 重新构建镜像（不使用缓存）
-docker-compose build --no-cache
+# docker-compose build --no-cache
 
 # 启动服务（后台运行）
-docker-compose up -d
+docker-compose up -d --build
 ```
 
 ## 🔐 用户管理
