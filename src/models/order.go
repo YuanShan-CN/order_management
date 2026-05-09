@@ -18,3 +18,11 @@ type Order struct {
 func (Order) TableName() string {
 	return "orders"
 }
+
+func (o *Order) CalculateIncome() {
+	if o.Settled {
+		o.Income = o.Deposit + o.Balance
+	} else {
+		o.Income = o.Deposit
+	}
+}

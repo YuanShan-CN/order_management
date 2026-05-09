@@ -412,11 +412,7 @@ func CreateOrder(c *gin.Context) {
 		return
 	}
 	order.UserID = userID
-	if order.Settled {
-		order.Income = order.Deposit + order.Balance
-	} else {
-		order.Income = order.Deposit
-	}
+	order.CalculateIncome()
 	if err := database.DB.Create(&order).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -445,11 +441,7 @@ func UpdateOrder(c *gin.Context) {
 		return
 	}
 	order.UserID = userID
-	if order.Settled {
-		order.Income = order.Deposit + order.Balance
-	} else {
-		order.Income = order.Deposit
-	}
+	order.CalculateIncome()
 	database.DB.Save(&order)
 	c.JSON(http.StatusOK, order)
 }
@@ -839,13 +831,14 @@ func ImportOrdersCSV(c *gin.Context) {
 
 		settled := settledStr == "是" || settledStr == "true" || settledStr == "1"
 
-		// 根据结算状态计算收入
-		var income float64
-		if settled {
-			income = deposit + balance
-		} else {
-			income = deposit
+		tempOrder := models.Order{
+			Settled: settled,
+			Deposit: deposit,
+			Balance: balance,
 		}
+		tempOrder.CalculateIncome()
+		income := tempOrder.Income
+
 		// 如果CSV中指定了收入，且自动计算的收入为0，则使用CSV中的值
 		if income == 0 && incomeIdx != -1 && len(record) > incomeIdx {
 			incomeStr := strings.TrimSpace(record[incomeIdx])
