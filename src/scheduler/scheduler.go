@@ -13,9 +13,21 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/YuanShan-CN/order_management/src/config"
 	"github.com/YuanShan-CN/order_management/src/database"
 	"github.com/YuanShan-CN/order_management/src/models"
 )
+
+// getLocation 获取配置的时区
+func getLocation() *time.Location {
+	timezone := config.AppConfig.Scheduler.Timezone
+	loc, err := time.LoadLocation(timezone)
+	if err != nil {
+		log.Printf("Warning: Failed to load timezone %s, using local time: %v", timezone, err)
+		return time.Local
+	}
+	return loc
+}
 
 // globalScheduler 全局调度器实例
 var globalScheduler *Scheduler
@@ -38,6 +50,15 @@ func Shutdown() {
 		log.Println("Shutting down scheduler...")
 		globalScheduler.Stop()
 	}
+}
+
+// RunNow 立即执行一次导出（用于调试）
+func RunNow() error {
+	if globalScheduler == nil {
+		return fmt.Errorf("scheduler not initialized")
+	}
+	globalScheduler.exportToCSV()
+	return nil
 }
 
 // Scheduler 定时任务调度器
@@ -101,6 +122,7 @@ func (s *Scheduler) IsRunningInDocker() bool {
 // Start 启动定时任务调度器
 // 仅在Docker环境中启用
 func (s *Scheduler) Start() {
+	log.Printf("isRunningInDocker: %v", s.isRunningInDocker)
 	if !s.isRunningInDocker {
 		log.Println("Running in local environment, scheduler disabled")
 		return
@@ -111,6 +133,8 @@ func (s *Scheduler) Start() {
 		log.Printf("Failed to create CSV directory: %v", err)
 		return
 	}
+
+	log.Printf("CSV export directory: %s", s.csvPath)
 
 	// 启动日常导出任务
 	go s.runDailyExport()
@@ -137,20 +161,33 @@ func (s *Scheduler) ensureCSVDirectory() error {
 }
 
 // runDailyExport 执行每日CSV导出任务
-// 每天凌晨00:05自动触发
+// 每天定时触发（时区和时间由配置决定）
 func (s *Scheduler) runDailyExport() {
-	for {
-		now := time.Now()
-		// 计算下次执行时间：今天或明天的00:05
-		next := time.Date(now.Year(), now.Month(), now.Day(), 0, 5, 0, 0, now.Location())
+	loc := getLocation()
+	exportHour := config.AppConfig.Scheduler.ExportHour
+	exportMinute := config.AppConfig.Scheduler.ExportMinute
 
-		// 如果已过00:05，则设为明天
+	log.Printf("Using timezone: %s, export time: %02d:%02d",
+		loc.String(),
+		exportHour,
+		exportMinute)
+
+	for {
+		now := time.Now().In(loc)
+		// 计算下次执行时间：今天或明天的配置时间
+		next := time.Date(now.Year(), now.Month(), now.Day(),
+			exportHour, exportMinute, 0, 0, loc)
+
+		// 如果已过配置的时间，则设为明天
 		if next.Before(now) {
 			next = next.Add(24 * time.Hour)
 		}
 
 		duration := next.Sub(now)
-		log.Printf("Next CSV export scheduled at: %s (in %v)", next.Format(time.RFC3339), duration)
+		log.Printf("Current time: %s, next export at: %s (in %v)",
+			now.Format(time.RFC3339),
+			next.Format(time.RFC3339),
+			duration)
 
 		select {
 		case <-time.After(duration):

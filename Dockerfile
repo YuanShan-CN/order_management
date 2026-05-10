@@ -14,6 +14,11 @@ FROM alpine:latest
 
 WORKDIR /app
 
+# 设置时区
+RUN apk add --no-cache tzdata
+ENV TZ=Asia/Shanghai
+RUN mkdir -p /app/data/csv
+
 COPY --from=builder /app/order_management .
 COPY --from=builder /app/init_user .
 COPY --from=builder /app/templates ./templates

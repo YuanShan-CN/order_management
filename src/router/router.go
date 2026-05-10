@@ -7,6 +7,7 @@ import (
 	"github.com/YuanShan-CN/order_management/src/database"
 	"github.com/YuanShan-CN/order_management/src/middleware"
 	"github.com/YuanShan-CN/order_management/src/models"
+	"github.com/YuanShan-CN/order_management/src/scheduler"
 	"github.com/gin-gonic/gin"
 )
 
@@ -76,6 +77,16 @@ func Setup() *gin.Engine {
 		database.DB.Delete(&models.Order{})
 		database.DB.Delete(&models.Shop{})
 		c.JSON(http.StatusOK, gin.H{"message": "数据已清空"})
+	})
+
+	// 调试用的定时任务接口
+	r.GET("/api/scheduler/run-now", func(c *gin.Context) {
+		err := scheduler.RunNow()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "Export triggered"})
 	})
 
 	return r
