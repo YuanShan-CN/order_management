@@ -174,11 +174,30 @@ func (s *Scheduler) hasUserExportedToday(username string, todayInUserZone time.T
 func (s *Scheduler) runDailyExport() {
 	log.Println("Starting hourly check for CSV export")
 
+	var lastCheckHour int
+
 	for {
 		now := time.Now().UTC()
+		currentHour := now.Hour()
+
+		// 避免同一个小时重复检查（防止边界情况）
+		if currentHour == lastCheckHour {
+			// 同一小时已经检查过，直接等待到下一个小时
+			nextCheck := now.Truncate(time.Hour).Add(time.Hour)
+			waitDuration := nextCheck.Sub(now)
+			log.Printf("Same hour (%d) already checked, waiting until next hour... (in %v)", currentHour, waitDuration)
+			
+			select {
+			case <-time.After(waitDuration):
+			case <-s.stopChan:
+				return
+			}
+			continue
+		}
 
 		// 导出所有需要导出的用户
 		s.exportToCSV()
+		lastCheckHour = currentHour
 
 		// 等待到下一个整点小时（UTC）
 		nextCheck := now.Truncate(time.Hour).Add(time.Hour)
