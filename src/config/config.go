@@ -2,7 +2,7 @@ package config
 
 import (
 	"log"
-	"os" // 已弃用：Go 1.16+ 应使用 os 包中的 ReadFile
+	"os"
 	"strconv"
 
 	"gopkg.in/yaml.v2"
@@ -25,23 +25,15 @@ type JWTConfig struct {
 	ExpireHour int    `yaml:"expire_hour"`
 }
 
-type SchedulerConfig struct {
-	Timezone string `yaml:"timezone"`
-}
-
 type Config struct {
-	Database  DatabaseConfig  `yaml:"database"`
-	Server    ServerConfig    `yaml:"server"`
-	JWT       JWTConfig       `yaml:"jwt"`
-	Scheduler SchedulerConfig `yaml:"scheduler"`
+	Database DatabaseConfig `yaml:"database"`
+	Server   ServerConfig   `yaml:"server"`
+	JWT      JWTConfig      `yaml:"jwt"`
 }
 
 var AppConfig Config
 
 func LoadConfig(configPath string) error {
-	// 设置默认值
-	AppConfig.Scheduler.Timezone = "Asia/Shanghai"
-
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -60,7 +52,6 @@ func LoadConfig(configPath string) error {
 	overrideFromEnv()
 
 	log.Printf("Database: %s:%d/%s", AppConfig.Database.Host, AppConfig.Database.Port, AppConfig.Database.Database)
-	log.Printf("Scheduler: timezone=%s", AppConfig.Scheduler.Timezone)
 
 	return nil
 }
@@ -95,8 +86,5 @@ func overrideFromEnv() {
 		if p, err := strconv.Atoi(serverPort); err == nil {
 			AppConfig.Server.Port = p
 		}
-	}
-	if timezone := os.Getenv("TZ"); timezone != "" {
-		AppConfig.Scheduler.Timezone = timezone
 	}
 }

@@ -11,6 +11,3 @@ server:
 jwt:
   secret: your-secret-key-change-in-production
   expire_hour: 24
-
-scheduler:
-  timezone: Asia/Shanghai
