@@ -10,7 +10,8 @@
 - **回收站** - 支持订单和店铺的软删除与恢复
 - **数据导入** - 支持 CSV 文件批量导入订单数据，自动创建缺失的店铺，友好的错误提示
 - **数据导出** - 支持将订单数据导出为 CSV 文件，日期只显示年月日（YYYY-MM-DD）
-- **多用户支持** - 用户登录、数据隔离、密码管理
+- **定时任务** - 每日自动导出 CSV，每小时检查，按用户时区独立处理
+- **多用户支持** - 用户登录、数据隔离、密码管理、用户时区配置
 - **JWT 认证** - 安全的 token 认证机制
 
 ## 🛠️ 技术栈
@@ -86,8 +87,8 @@ go mod tidy
 # 5. 编译项目
 go build -o order_management .
 
-# 6. 初始化用户
-./order_management init -username admin -password your_password
+# 6. 初始化用户（使用单独的脚本）
+go run scripts/init_user.go -username admin -password your_password
 
 # 7. 运行服务
 ./order_management -c config.yaml
@@ -407,20 +408,73 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ### 时区安全设计
 
-系统采用以下设计确保**没有时区问题**：
+系统采用以下最佳实践处理时区：
 
-1. **数据存储**：
+1. **核心策略**：**后端全用 UTC，前端自己格式化显示**
+   - 数据库连接使用 `loc=UTC`
+   - JWT 时间戳使用 UTC
+   - 所有时间处理使用 UTC
+2. **用户时区**：
+   - `User.timezone` 字段存储每个用户的时区（如 `Asia/Shanghai`）
+   - 定时任务按用户时区判断日期
+   - 导出文件名使用用户时区的日期
+3. **订单日期**：
    - 使用 `DATE` 类型（仅存储年月日，无时间信息）
    - Go 层使用 `string` 类型而非 `time.Time`
    - 不涉及时区转换
-2. **处理逻辑**：
-   - 所有日期处理基于字符串操作
-   - 只截取前 10 个字符（YYYY-MM-DD）
-   - 不使用时区敏感的时间解析
-3. **安全对比**：
-   - ✅ `DATE` 类型 - 安全
-   - ❌ `DATETIME` 类型 - 可能有时区问题
-   - ❌ `TIMESTAMP` 类型 - 有时区转换
+4. **API 通信**：建议使用时间戳或 ISO 8601 UTC 字符串，前端按用户本地时区展示
+
+### 定时自动导出
+
+系统支持每日自动导出 CSV，具有以下特性：
+
+- **调度策略**：每小时检查一次（按 UTC 时间）
+- **用户独立时区**：每个用户可设置自己的时区，按用户时区判断"今天"
+- **文件名日期**：使用用户时区的日期（如 `admin_2026-05-11.csv`）
+- **容错设计**：Mac 睡眠后唤醒立即补导，不遗漏任务
+- **调试接口**：`GET /api/scheduler/run-now` 可手动触发导出
+- **容器环境**：仅在 Docker 容器中启用定时任务，本地开发禁用
+- **存储位置**：Docker 中 `/app/data/csv`，本地 `./data/csv`
+
+## 📊 数据库迁移
+
+项目使用 GORM AutoMigrate 自动处理数据库结构变更，但对于复杂的迁移，手动执行 SQL 文件：
+
+### 迁移文件列表
+
+迁移文件位于 `migrations/` 目录：
+
+| 迁移文件                          | 说明              |
+| ------------------------------ | --------------- |
+| 20260426_remove_edited_column.sql | 移除 edited 字段   |
+| 20260428_add_user_tables.sql       | 添加用户表          |
+| 20260429_add_deposit_balance.sql | 添加定金尾款字段       |
+| 20260511_add_user_timezone.sql   | 添加用户时区字段        |
+
+### 执行迁移
+
+**方式 1：通过 docker-compose（推荐）**
+
+```bash
+# 启动服务时 GORM AutoMigrate 会自动处理简单的表结构变更
+docker-compose up -d
+
+# 对于复杂迁移（如添加字段），如果有需要可手动执行 SQL
+docker exec -i my_mariadb mysql -u root -p order_management < migrations/20260511_add_user_timezone.sql
+```
+
+**方式 2：本地开发**
+
+```bash
+# 使用 mysql 命令行
+mysql -u root -p order_management < migrations/20260511_add_user_timezone.sql
+```
+
+### 迁移说明
+
+- 大部分情况下，GORM AutoMigrate 会自动处理（如添加新列、修改字段等）
+- 需要手动迁移的情况：删除/重命名列、修改数据等破坏性操作
+- 每个迁移文件有时间戳前缀，按顺序执行
 
 ## 📝 开发说明
 
