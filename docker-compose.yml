@@ -11,6 +11,15 @@ services:
     environment:
       - DB_HOST=${DB_HOST}
       - DB_PORT=${DB_PORT}
+      - TZ=${TZ}
+      - EXPORT_HOUR=${EXPORT_HOUR}
+      - EXPORT_MINUTE=${EXPORT_MINUTE}
+      - SERVER_PORT=${SERVER_PORT}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRE_HOUR=${JWT_EXPIRE_HOUR}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
     volumes:
       - ./config.yaml:/app/config.yaml
       - ~/code/docker/order_management/data:/app/data

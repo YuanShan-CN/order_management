@@ -14,5 +14,3 @@ jwt:
 
 scheduler:
   timezone: Asia/Shanghai
-  export_hour: 0
-  export_minute: 5

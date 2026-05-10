@@ -26,9 +26,7 @@ type JWTConfig struct {
 }
 
 type SchedulerConfig struct {
-	Timezone     string `yaml:"timezone"`
-	ExportHour   int    `yaml:"export_hour"`
-	ExportMinute int    `yaml:"export_minute"`
+	Timezone string `yaml:"timezone"`
 }
 
 type Config struct {
@@ -43,8 +41,6 @@ var AppConfig Config
 func LoadConfig(configPath string) error {
 	// 设置默认值
 	AppConfig.Scheduler.Timezone = "Asia/Shanghai"
-	AppConfig.Scheduler.ExportHour = 0
-	AppConfig.Scheduler.ExportMinute = 5
 
 	data, err := os.ReadFile(configPath)
 	if err != nil {
@@ -64,10 +60,7 @@ func LoadConfig(configPath string) error {
 	overrideFromEnv()
 
 	log.Printf("Database: %s:%d/%s", AppConfig.Database.Host, AppConfig.Database.Port, AppConfig.Database.Database)
-	log.Printf("Scheduler: timezone=%s, export time=%02d:%02d",
-		AppConfig.Scheduler.Timezone,
-		AppConfig.Scheduler.ExportHour,
-		AppConfig.Scheduler.ExportMinute)
+	log.Printf("Scheduler: timezone=%s", AppConfig.Scheduler.Timezone)
 
 	return nil
 }
@@ -105,15 +98,5 @@ func overrideFromEnv() {
 	}
 	if timezone := os.Getenv("TZ"); timezone != "" {
 		AppConfig.Scheduler.Timezone = timezone
-	}
-	if exportHour := os.Getenv("EXPORT_HOUR"); exportHour != "" {
-		if h, err := strconv.Atoi(exportHour); err == nil {
-			AppConfig.Scheduler.ExportHour = h
-		}
-	}
-	if exportMinute := os.Getenv("EXPORT_MINUTE"); exportMinute != "" {
-		if m, err := strconv.Atoi(exportMinute); err == nil {
-			AppConfig.Scheduler.ExportMinute = m
-		}
 	}
 }

@@ -1,7 +1,7 @@
 // Package scheduler 提供定时任务功能，用于自动导出订单数据为CSV文件
 // 主要功能：
 // - 检测运行环境（Docker/本地）
-// - 每天凌晨00:05自动导出所有用户的订单数据
+// - 每小时检查一次，如果今天无导出文件则执行导出
 // - 支持优雅关闭
 package scheduler
 
@@ -139,7 +139,7 @@ func (s *Scheduler) Start() {
 	// 启动日常导出任务
 	go s.runDailyExport()
 
-	log.Printf("Scheduler started, exporting CSV daily at 00:05 to %s", s.csvPath)
+	log.Printf("Scheduler started, checking hourly for CSV export to %s", s.csvPath)
 }
 
 // Stop 停止调度器
@@ -160,45 +160,60 @@ func (s *Scheduler) ensureCSVDirectory() error {
 	return os.MkdirAll(s.csvPath, 0755)
 }
 
+// hasExportedToday 检查今天是否已经有导出文件
+func (s *Scheduler) hasExportedToday(todayInUserZone time.Time) bool {
+	dateStr := todayInUserZone.Format("2006-01-02")
+
+	// 检查目录中的文件
+	files, err := os.ReadDir(s.csvPath)
+	if err != nil {
+		log.Printf("Warning: Failed to read CSV directory: %v", err)
+		return false
+	}
+
+	// 查找是否有今天日期的文件
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+		// 文件名格式: {username}_{date}.csv
+		if len(file.Name()) > len(dateStr)+1 && file.Name()[len(file.Name())-len(dateStr)-4:len(file.Name())-4] == dateStr {
+			return true
+		}
+	}
+	return false
+}
+
 // runDailyExport 执行每日CSV导出任务
-// 配置为用户时区，但内部全部使用UTC时间调度
+// 每小时检查一次，如果今天没有导出文件则执行
 func (s *Scheduler) runDailyExport() {
 	loc := getLocation()
-	exportHour := config.AppConfig.Scheduler.ExportHour
-	exportMinute := config.AppConfig.Scheduler.ExportMinute
 
-	log.Printf("Configured export time: %s %02d:%02d",
-		loc.String(),
-		exportHour,
-		exportMinute)
+	log.Printf("Configured export timezone: %s", loc.String())
+	log.Println("Starting hourly check for CSV export")
 
 	for {
 		now := time.Now().UTC()
-		nowInTargetZone := now.In(loc)
+		todayInUserZone := now.In(loc)
 
-		// 在目标时区中计算今天或明天的配置时间
-		targetTime := time.Date(nowInTargetZone.Year(), nowInTargetZone.Month(), nowInTargetZone.Day(),
-			exportHour, exportMinute, 0, 0, loc)
-
-		// 转换为 UTC
-		targetTimeUTC := targetTime.UTC()
-
-		// 如果配置的时间在 UTC 中已经过了，则设为明天
-		if targetTimeUTC.Before(now) {
-			targetTime = targetTime.Add(24 * time.Hour)
-			targetTimeUTC = targetTime.UTC()
+		// 检查今天是否已经导出过
+		if !s.hasExportedToday(todayInUserZone) {
+			log.Printf("No export found for %s, running export now", todayInUserZone.Format("2006-01-02"))
+			s.exportToCSV()
+		} else {
+			log.Printf("Already exported for %s, skipping", todayInUserZone.Format("2006-01-02"))
 		}
 
-		duration := targetTimeUTC.Sub(now)
-		log.Printf("Current time (UTC): %s, next export at (UTC): %s (in %v)",
-			now.Format(time.RFC3339),
-			targetTimeUTC.Format(time.RFC3339),
-			duration)
+		// 等待到下一个整点小时（或者1小时后）
+		nextCheck := now.Truncate(time.Hour).Add(time.Hour)
+		waitDuration := nextCheck.Sub(now)
+		log.Printf("Next check at (UTC): %s (in %v)",
+			nextCheck.Format(time.RFC3339),
+			waitDuration)
 
 		select {
-		case <-time.After(duration):
-			// 到达定时，执行导出
-			s.exportToCSV()
+		case <-time.After(waitDuration):
+			// 继续下一次检查
 		case <-s.stopChan:
 			// 收到停止信号，退出
 			return
