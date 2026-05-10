@@ -17,12 +17,13 @@ type Claims struct {
 }
 
 func GenerateToken(userID uint, username string) (string, error) {
+	now := time.Now().UTC()
 	claims := Claims{
 		UserID:   userID,
 		Username: username,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(config.AppConfig.JWT.ExpireHour) * time.Hour)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ExpiresAt: jwt.NewNumericDate(now.Add(time.Duration(config.AppConfig.JWT.ExpireHour) * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(now),
 		},
 	}
 

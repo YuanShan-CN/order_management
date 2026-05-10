@@ -161,32 +161,38 @@ func (s *Scheduler) ensureCSVDirectory() error {
 }
 
 // runDailyExport 执行每日CSV导出任务
-// 每天定时触发（时区和时间由配置决定）
+// 配置为用户时区，但内部全部使用UTC时间调度
 func (s *Scheduler) runDailyExport() {
 	loc := getLocation()
 	exportHour := config.AppConfig.Scheduler.ExportHour
 	exportMinute := config.AppConfig.Scheduler.ExportMinute
 
-	log.Printf("Using timezone: %s, export time: %02d:%02d",
+	log.Printf("Configured export time: %s %02d:%02d",
 		loc.String(),
 		exportHour,
 		exportMinute)
 
 	for {
-		now := time.Now().In(loc)
-		// 计算下次执行时间：今天或明天的配置时间
-		next := time.Date(now.Year(), now.Month(), now.Day(),
+		now := time.Now().UTC()
+		nowInTargetZone := now.In(loc)
+
+		// 在目标时区中计算今天或明天的配置时间
+		targetTime := time.Date(nowInTargetZone.Year(), nowInTargetZone.Month(), nowInTargetZone.Day(),
 			exportHour, exportMinute, 0, 0, loc)
 
-		// 如果已过配置的时间，则设为明天
-		if next.Before(now) {
-			next = next.Add(24 * time.Hour)
+		// 转换为 UTC
+		targetTimeUTC := targetTime.UTC()
+
+		// 如果配置的时间在 UTC 中已经过了，则设为明天
+		if targetTimeUTC.Before(now) {
+			targetTime = targetTime.Add(24 * time.Hour)
+			targetTimeUTC = targetTime.UTC()
 		}
 
-		duration := next.Sub(now)
-		log.Printf("Current time: %s, next export at: %s (in %v)",
+		duration := targetTimeUTC.Sub(now)
+		log.Printf("Current time (UTC): %s, next export at (UTC): %s (in %v)",
 			now.Format(time.RFC3339),
-			next.Format(time.RFC3339),
+			targetTimeUTC.Format(time.RFC3339),
 			duration)
 
 		select {
@@ -211,7 +217,16 @@ func (s *Scheduler) exportToCSV() {
 		}
 	}()
 
-	log.Println("Starting scheduled CSV export...")
+	loc := getLocation()
+	// 使用配置的时区作为用户可见的日期
+	todayInUserZone := time.Now().In(loc)
+	log.Printf("Starting scheduled CSV export... (date: %s)", todayInUserZone.Format("2006-01-02"))
+
+	// 确保目录存在
+	if err := s.ensureCSVDirectory(); err != nil {
+		log.Printf("Failed to create CSV directory: %v", err)
+		return
+	}
 
 	// 获取所有用户
 	users, err := s.getAllUsers()
@@ -222,7 +237,7 @@ func (s *Scheduler) exportToCSV() {
 
 	// 为每个用户单独导出
 	for _, user := range users {
-		if err := s.exportUserOrders(user.ID, user.Username); err != nil {
+		if err := s.exportUserOrders(user.ID, user.Username, todayInUserZone); err != nil {
 			log.Printf("Failed to export orders for user %s: %v", user.Username, err)
 			continue
 		}
@@ -260,7 +275,8 @@ func (s *Scheduler) getAllUsers() ([]UserInfo, error) {
 //
 //	userID - 用户ID
 //	username - 用户名（用于文件名）
-func (s *Scheduler) exportUserOrders(userID uint, username string) error {
+//	exportDate - 导出日期（用户可见的日期）
+func (s *Scheduler) exportUserOrders(userID uint, username string, exportDate time.Time) error {
 	var orders []models.Order
 	if err := database.DB.Where("user_id = ?", userID).
 		Order("date DESC").Find(&orders).Error; err != nil {
@@ -274,7 +290,7 @@ func (s *Scheduler) exportUserOrders(userID uint, username string) error {
 	}
 
 	// 生成文件名：{用户名}_{日期}.csv
-	filename := fmt.Sprintf("%s_%s.csv", username, time.Now().Format("2006-01-02"))
+	filename := fmt.Sprintf("%s_%s.csv", username, exportDate.Format("2006-01-02"))
 	filePath := filepath.Join(s.csvPath, filename)
 
 	// 创建文件

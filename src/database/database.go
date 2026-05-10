@@ -18,7 +18,8 @@ func Connect() error {
 	var err error
 	cfg := config.AppConfig.Database
 
-	dsn := cfg.Username + ":" + cfg.Password + "@tcp(" + cfg.Host + ":" + strconv.Itoa(cfg.Port) + ")/" + cfg.Database + "?charset=utf8mb4&parseTime=True&loc=Local"
+	log.Printf("Using database timezone: UTC")
+	dsn := cfg.Username + ":" + cfg.Password + "@tcp(" + cfg.Host + ":" + strconv.Itoa(cfg.Port) + ")/" + cfg.Database + "?charset=utf8mb4&parseTime=True&loc=UTC"
 
 	DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),

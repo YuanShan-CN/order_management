@@ -14,9 +14,7 @@ FROM alpine:latest
 
 WORKDIR /app
 
-# 设置时区
-RUN apk add --no-cache tzdata
-ENV TZ=Asia/Shanghai
+# 全部使用UTC时间，不需要时区配置
 RUN mkdir -p /app/data/csv
 
 COPY --from=builder /app/order_management .
