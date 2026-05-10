@@ -44,7 +44,7 @@ func getShopFieldName(field string) string {
 func GetShops(c *gin.Context) {
 	userID := getUserID(c)
 	var shops []models.Shop
-	database.DB.Where("deleted_at IS NULL AND user_id = ?", userID).Order("id DESC").Find(&shops)
+	database.DB.Where("user_id = ?", userID).Order("id DESC").Find(&shops)
 	c.JSON(http.StatusOK, shops)
 }
 
@@ -111,7 +111,7 @@ func DeleteShop(c *gin.Context) {
 	userID := getUserID(c)
 	id := c.Param("id")
 	var shop models.Shop
-	if err := database.DB.Where("deleted_at IS NULL AND id = ? AND user_id = ?", id, userID).First(&shop).Error; err != nil {
+	if err := database.DB.Where("id = ? AND user_id = ?", id, userID).First(&shop).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Shop not found"})
 			return

@@ -112,7 +112,7 @@ func GetUnifiedStats(c *gin.Context) {
 }
 
 func buildStatsQuery(userID uint, year, month, settled, shop string) *gorm.DB {
-	db := database.DB.Where("deleted_at IS NULL AND user_id = ?", userID)
+	db := database.DB.Where("user_id = ?", userID)
 
 	if year != "" && year != "all" {
 		db = db.Where("YEAR(date) = ?", year)
@@ -302,16 +302,6 @@ func getFieldName(field string) string {
 	}
 }
 
-// 提取日期的年月日部分
-func extractDatePart(date string) string {
-	// 如果是日期时间格式（如 2026-04-28T00:00:00+08:00），只保留前10个字符
-	if len(date) > 10 && (date[10] == 'T' || date[10] == ' ') {
-		return date[:10]
-	}
-	// 否则返回原日期
-	return date
-}
-
 func getUserID(c *gin.Context) uint {
 	userID, exists := c.Get("user_id")
 	if !exists {
@@ -323,7 +313,7 @@ func getUserID(c *gin.Context) uint {
 func GetOrders(c *gin.Context) {
 	userID := getUserID(c)
 	var orders []models.Order
-	db := database.DB.Where("deleted_at IS NULL AND user_id = ?", userID)
+	db := database.DB.Where("user_id = ?", userID)
 
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("size", "15"))
@@ -540,7 +530,7 @@ func ForceDeleteOrder(c *gin.Context) {
 func ExportOrdersCSV(c *gin.Context) {
 	userID := getUserID(c)
 	var orders []models.Order
-	db := database.DB.Where("deleted_at IS NULL AND user_id = ?", userID)
+	db := database.DB.Where("user_id = ?", userID)
 
 	search := c.Query("search")
 	settled := c.Query("settled")
@@ -577,43 +567,16 @@ func ExportOrdersCSV(c *gin.Context) {
 	c.Header("Content-Disposition", "attachment; filename=orders.csv")
 	c.Header("Content-Transfer-Encoding", "binary")
 
-	writer := csv.NewWriter(c.Writer)
-	defer writer.Flush()
-
-	headers := []string{"ID", "日期", "地点", "内容", "店铺", "定金", "尾款", "已结算", "收入"}
-	if err := writer.Write(headers); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to write CSV headers"})
+	if err := models.WriteOrdersToCSV(c.Writer, orders, true); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to export CSV"})
 		return
-	}
-
-	for _, order := range orders {
-		settledStr := "否"
-		if order.Settled {
-			settledStr = "是"
-		}
-
-		row := []string{
-			strconv.Itoa(int(order.ID)),
-			extractDatePart(order.Date),
-			order.Location,
-			order.Content,
-			order.Shop,
-			strconv.FormatFloat(order.Deposit, 'f', 2, 64),
-			strconv.FormatFloat(order.Balance, 'f', 2, 64),
-			settledStr,
-			strconv.FormatFloat(order.Income, 'f', 2, 64),
-		}
-		if err := writer.Write(row); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to write CSV row"})
-			return
-		}
 	}
 }
 
 func ExportStatsCSV(c *gin.Context) {
 	userID := getUserID(c)
 	var orders []models.Order
-	db := database.DB.Where("deleted_at IS NULL AND user_id = ?", userID)
+	db := database.DB.Where("user_id = ?", userID)
 
 	year := c.Query("year")
 	month := c.Query("month")
@@ -644,35 +607,9 @@ func ExportStatsCSV(c *gin.Context) {
 	c.Header("Content-Disposition", "attachment; filename=stats.csv")
 	c.Header("Content-Transfer-Encoding", "binary")
 
-	writer := csv.NewWriter(c.Writer)
-	defer writer.Flush()
-
-	headers := []string{"日期", "地点", "内容", "店铺", "定金", "尾款", "已结算", "收入"}
-	if err := writer.Write(headers); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to write CSV headers"})
+	if err := models.WriteOrdersToCSV(c.Writer, orders, false); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to export CSV"})
 		return
-	}
-
-	for _, order := range orders {
-		settledStr := "否"
-		if order.Settled {
-			settledStr = "是"
-		}
-
-		row := []string{
-			extractDatePart(order.Date),
-			order.Location,
-			order.Content,
-			order.Shop,
-			strconv.FormatFloat(order.Deposit, 'f', 2, 64),
-			strconv.FormatFloat(order.Balance, 'f', 2, 64),
-			settledStr,
-			strconv.FormatFloat(order.Income, 'f', 2, 64),
-		}
-		if err := writer.Write(row); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to write CSV row"})
-			return
-		}
 	}
 }
 

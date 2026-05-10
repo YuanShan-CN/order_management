@@ -97,13 +97,14 @@ go build -o order_management .
 
 ```bash
 # 停止并删除容器
-docker-compose down
+# docker-compose down
 
 # 重新构建镜像（不使用缓存）
 # docker-compose build --no-cache
 
 # 启动服务（后台运行）
 docker-compose up -d --build
+
 ```
 
 ## 🔐 用户管理

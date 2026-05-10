@@ -18,6 +18,8 @@ COPY --from=builder /app/order_management .
 COPY --from=builder /app/init_user .
 COPY --from=builder /app/templates ./templates
 
+ENV IS_DOCKER=true
+
 EXPOSE 8080
 
 CMD ["./order_management"]
