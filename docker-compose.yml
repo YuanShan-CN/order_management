@@ -6,6 +6,7 @@ services:
       - "8081:8080"
     depends_on:
       - db
+      - redis
     env_file:
       - .env
     environment:
@@ -17,6 +18,8 @@ services:
       - DB_NAME=${DB_NAME}
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
     volumes:
       - ./config.yaml:/app/config.yaml
       - ~/code/docker/order_management/data:/app/data
@@ -35,6 +38,17 @@ services:
       MARIADB_DATABASE: ${DB_NAME}
     volumes:
       - ~/code/docker/order_management/mariadb_data:/var/lib/mysql
+    networks:
+      - app_network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: order_management_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - ~/code/docker/order_management/redis_data:/data
     networks:
       - app_network
     restart: unless-stopped
