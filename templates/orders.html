@@ -81,6 +81,40 @@
         .sortable { cursor: pointer; user-select: none; }
         .sortable::after { content: ' ↕'; font-size: 12px; color: #999; }
         
+        .suggestions-box {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .suggestions-box.show {
+            display: block;
+        }
+        
+        .suggestion-item {
+            padding: 10px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .suggestion-item:last-child {
+            border-bottom: none;
+        }
+        
+        .suggestion-item:hover {
+            background: #667eea;
+            color: white;
+        }
+        
         .date-picker-container { position: relative; }
         .date-picker-input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
         .date-picker-calendar { display: none; position: absolute; top: 100%; left: 0; margin-top: 5px; background: white; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); z-index: 1000; min-width: 280px; }
@@ -244,9 +278,12 @@
                             </div>
                             <div class="form-group">
                                 <label>店铺 <span style="color: #f44336;">*</span></label>
-                                <select id="shop" required>
-                                    <option value="">请选择店铺</option>
-                                </select>
+                                <div style="position: relative;">
+                                    <input type="text" id="shop" required placeholder="输入店铺名称，支持联想" 
+                                           autocomplete="off" oninput="handleShopInput(this.value)" onfocus="showShopSuggestions()" 
+                                           onblur="setTimeout(hideShopSuggestions, 200)">
+                                    <div id="shopSuggestions" class="suggestions-box"></div>
+                                </div>
                             </div>
                         </div>
                         <div class="form-row">
@@ -323,9 +360,12 @@
                     </div>
                     <div class="form-group">
                         <label>店铺 <span style="color: #f44336;">*</span></label>
-                        <select id="editShop" required>
-                            <option value="">请选择店铺</option>
-                        </select>
+                        <div style="position: relative;">
+                            <input type="text" id="editShop" required placeholder="输入店铺名称，支持联想" 
+                                   autocomplete="off" oninput="handleShopInput(this.value, true)" onfocus="showShopSuggestions(true)" 
+                                   onblur="setTimeout(() => hideShopSuggestions(true), 200)">
+                            <div id="editShopSuggestions" class="suggestions-box"></div>
+                        </div>
                     </div>
                 </div>
                 <div class="form-row">
@@ -566,13 +606,53 @@
         }
 
         function updateShopSelects() {
-            const shopSelect = document.getElementById('shop');
-            const editShopSelect = document.getElementById('editShop');
-            const options = shops.map(shop => 
-                `<option value="${shop.name}">${shop.name}</option>`
+            // 不再需要这个函数了，现在用联想输入
+        }
+        
+        function getFilteredShops(inputValue) {
+            if (!inputValue) return shops;
+            const searchTerm = inputValue.toLowerCase();
+            return shops.filter(shop => 
+                shop.name.toLowerCase().includes(searchTerm)
+            );
+        }
+        
+        function renderSuggestions(suggestions, isEdit = false) {
+            const suggestionsId = isEdit ? 'editShopSuggestions' : 'shopSuggestions';
+            const suggestionsBox = document.getElementById(suggestionsId);
+            
+            if (suggestions.length === 0) {
+                suggestionsBox.classList.remove('show');
+                return;
+            }
+            
+            suggestionsBox.innerHTML = suggestions.map(shop => 
+                `<div class="suggestion-item" onclick="selectShop('${shop.name}', ${isEdit})">${shop.name}</div>`
             ).join('');
-            shopSelect.innerHTML = '<option value="">请选择店铺</option>' + options;
-            editShopSelect.innerHTML = '<option value="">请选择店铺</option>' + options;
+            suggestionsBox.classList.add('show');
+        }
+        
+        function handleShopInput(value, isEdit = false) {
+            const filtered = getFilteredShops(value);
+            renderSuggestions(filtered, isEdit);
+        }
+        
+        function showShopSuggestions(isEdit = false) {
+            const inputId = isEdit ? 'editShop' : 'shop';
+            const value = document.getElementById(inputId).value;
+            const filtered = getFilteredShops(value);
+            renderSuggestions(filtered, isEdit);
+        }
+        
+        function hideShopSuggestions(isEdit = false) {
+            const suggestionsId = isEdit ? 'editShopSuggestions' : 'shopSuggestions';
+            document.getElementById(suggestionsId).classList.remove('show');
+        }
+        
+        function selectShop(name, isEdit = false) {
+            const inputId = isEdit ? 'editShop' : 'shop';
+            document.getElementById(inputId).value = name;
+            hideShopSuggestions(isEdit);
         }
 
         function updateStats(orders) {

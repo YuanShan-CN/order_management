@@ -390,6 +390,20 @@ func GetOrder(c *gin.Context) {
 	c.JSON(http.StatusOK, order)
 }
 
+func ensureShopExists(userID uint, shopName string) error {
+	var shop models.Shop
+	result := database.DB.Where("name = ? AND user_id = ?", shopName, userID).First(&shop)
+	if result.Error == gorm.ErrRecordNotFound {
+		// 店铺不存在，创建新的
+		newShop := models.Shop{
+			UserID: userID,
+			Name:   shopName,
+		}
+		return database.DB.Create(&newShop).Error
+	}
+	return result.Error
+}
+
 func CreateOrder(c *gin.Context) {
 	userID := getUserID(c)
 	var order models.Order
@@ -399,6 +413,11 @@ func CreateOrder(c *gin.Context) {
 	}
 	if err := validateOrder(&order); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	// 确保店铺存在
+	if err := ensureShopExists(userID, order.Shop); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "创建店铺失败"})
 		return
 	}
 	order.UserID = userID
@@ -428,6 +447,11 @@ func UpdateOrder(c *gin.Context) {
 	}
 	if err := validateOrder(&order); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	// 确保店铺存在
+	if err := ensureShopExists(userID, order.Shop); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "创建店铺失败"})
 		return
 	}
 	order.UserID = userID
