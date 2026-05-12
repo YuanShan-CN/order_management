@@ -11,3 +11,9 @@ server:
 jwt:
   secret: your-secret-key-change-in-production
   expire_hour: 24
+
+redis:
+  host: localhost
+  port: 6379
+  password: ""
+  db: 0
