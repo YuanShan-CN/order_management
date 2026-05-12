@@ -89,5 +89,10 @@ func Setup() *gin.Engine {
 		c.JSON(http.StatusOK, gin.H{"message": "Export triggered"})
 	})
 
+	// 处理 Vite 开发服务器客户端请求（避免 404 日志）
+	r.GET("/@vite/client", func(c *gin.Context) {
+		c.Status(http.StatusNoContent)
+	})
+
 	return r
 }

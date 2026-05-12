@@ -71,7 +71,7 @@ func setDefaults() {
 	AppConfig.Database.Host = "localhost"
 	AppConfig.Database.Port = 3306
 	AppConfig.Server.Port = 8080
-	AppConfig.Redis.Host = "localhost"
+	AppConfig.Redis.Host = "redis"
 	AppConfig.Redis.Port = 6379
 	AppConfig.Redis.DB = 0
 }
