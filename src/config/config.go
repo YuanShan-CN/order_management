@@ -42,6 +42,8 @@ type Config struct {
 var AppConfig Config
 
 func LoadConfig(configPath string) error {
+	setDefaults()
+
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -60,8 +62,18 @@ func LoadConfig(configPath string) error {
 	overrideFromEnv()
 
 	log.Printf("Database: %s:%d/%s", AppConfig.Database.Host, AppConfig.Database.Port, AppConfig.Database.Database)
+	log.Printf("Redis: %s:%d/%d", AppConfig.Redis.Host, AppConfig.Redis.Port, AppConfig.Redis.DB)
 
 	return nil
+}
+
+func setDefaults() {
+	AppConfig.Database.Host = "localhost"
+	AppConfig.Database.Port = 3306
+	AppConfig.Server.Port = 8080
+	AppConfig.Redis.Host = "localhost"
+	AppConfig.Redis.Port = 6379
+	AppConfig.Redis.DB = 0
 }
 
 func overrideFromEnv() {
