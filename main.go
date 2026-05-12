@@ -13,6 +13,7 @@ import (
 
 	"github.com/YuanShan-CN/order_management/src/config"
 	"github.com/YuanShan-CN/order_management/src/database"
+	"github.com/YuanShan-CN/order_management/src/redis"
 	"github.com/YuanShan-CN/order_management/src/router"
 	"github.com/YuanShan-CN/order_management/src/scheduler"
 )
@@ -29,6 +30,11 @@ func main() {
 	err = database.Connect()
 	if err != nil {
 		log.Fatal("Failed to connect database:", err)
+	}
+
+	err = redis.Connect()
+	if err != nil {
+		log.Fatal("Failed to connect Redis:", err)
 	}
 
 	scheduler.Init()
@@ -68,6 +74,9 @@ func main() {
 
 	// 关闭数据库
 	database.Close()
+
+	// 关闭 Redis
+	redis.Close()
 
 	log.Println("Server exited")
 }

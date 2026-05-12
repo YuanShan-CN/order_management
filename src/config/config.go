@@ -25,10 +25,18 @@ type JWTConfig struct {
 	ExpireHour int    `yaml:"expire_hour"`
 }
 
+type RedisConfig struct {
+	Host     string `yaml:"host"`
+	Port     int    `yaml:"port"`
+	Password string `yaml:"password"`
+	DB       int    `yaml:"db"`
+}
+
 type Config struct {
 	Database DatabaseConfig `yaml:"database"`
 	Server   ServerConfig   `yaml:"server"`
 	JWT      JWTConfig      `yaml:"jwt"`
+	Redis    RedisConfig    `yaml:"redis"`
 }
 
 var AppConfig Config
@@ -85,6 +93,22 @@ func overrideFromEnv() {
 	if serverPort := os.Getenv("SERVER_PORT"); serverPort != "" {
 		if p, err := strconv.Atoi(serverPort); err == nil {
 			AppConfig.Server.Port = p
+		}
+	}
+	if redisHost := os.Getenv("REDIS_HOST"); redisHost != "" {
+		AppConfig.Redis.Host = redisHost
+	}
+	if redisPort := os.Getenv("REDIS_PORT"); redisPort != "" {
+		if p, err := strconv.Atoi(redisPort); err == nil {
+			AppConfig.Redis.Port = p
+		}
+	}
+	if redisPassword := os.Getenv("REDIS_PASSWORD"); redisPassword != "" {
+		AppConfig.Redis.Password = redisPassword
+	}
+	if redisDB := os.Getenv("REDIS_DB"); redisDB != "" {
+		if db, err := strconv.Atoi(redisDB); err == nil {
+			AppConfig.Redis.DB = db
 		}
 	}
 }
