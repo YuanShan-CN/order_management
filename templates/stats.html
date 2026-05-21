@@ -292,6 +292,8 @@
         let selectedMonth = null;
         let cachedMonthlyData = null;
         let cachedYear = null;
+        let cachedSettled = null;
+        let cachedShop = null;
 
         function getToken() {
             return localStorage.getItem('token');
@@ -464,6 +466,9 @@
             document.getElementById('settledSelect').value = 'all';
             selectedMonth = null;
             cachedMonthlyData = null;
+            cachedYear = null;
+            cachedSettled = null;
+            cachedShop = null;
             loadStats();
         }
 
@@ -479,10 +484,14 @@
 
         function updateMonthlyChart(monthlyData, settledFilter) {
             const year = document.getElementById('yearSelect').value;
+            const settled = document.getElementById('settledSelect').value;
+            const shop = document.getElementById('shopSelect').value;
             
-            if (!cachedMonthlyData || cachedYear !== year) {
+            if (!cachedMonthlyData || cachedYear !== year || cachedSettled !== settled || cachedShop !== shop) {
                 cachedMonthlyData = monthlyData;
                 cachedYear = year;
+                cachedSettled = settled;
+                cachedShop = shop;
             }
 
             const displayData = selectedMonth ? cachedMonthlyData : monthlyData;
