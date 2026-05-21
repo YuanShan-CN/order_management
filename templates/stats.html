@@ -519,17 +519,28 @@
         }
 
         function filterByMonth(month) {
-            const monthSelect = document.getElementById('monthSelect');
-            
             if (selectedMonth === month) {
                 selectedMonth = null;
-                monthSelect.value = 'all';
             } else {
                 selectedMonth = month;
-                monthSelect.value = month;
             }
             
-            loadStats();
+            updateMonthlyChartVisual();
+        }
+
+        function updateMonthlyChartVisual() {
+            const bars = document.querySelectorAll('.bar-container');
+            bars.forEach((container, index) => {
+                const bar = container.querySelector('.bar');
+                const isSelected = selectedMonth === index + 1;
+                const isFiltered = selectedMonth !== null && !isSelected;
+                
+                if (isFiltered) {
+                    bar.classList.add('bar-dimmed');
+                } else {
+                    bar.classList.remove('bar-dimmed');
+                }
+            });
         }
 
         function updateShopStats(shopStats, settledFilter) {
