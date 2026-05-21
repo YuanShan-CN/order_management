@@ -504,7 +504,8 @@
                 const value = item.income || 0;
                 const height = value > 0 ? Math.max((value / maxValue) * maxBarHeight, 6) : 0;
                 const isSelected = selectedMonth === index + 1;
-                const barClass = isSelected ? 'bar' : 'bar bar-dimmed';
+                const isFiltered = selectedMonth !== null && !isSelected;
+                const barClass = isFiltered ? 'bar bar-dimmed' : 'bar';
                 return `
                     <div class="bar-container" onclick="filterByMonth(${index + 1})">
                         <div class="bar-value">¥${value.toFixed(0)}</div>
