@@ -34,7 +34,8 @@
         .chart-container { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 30px; }
         .chart-title { font-size: 18px; font-weight: 600; color: #333; margin-bottom: 20px; }
         .chart-bars { display: flex; align-items: flex-end; height: 200px; gap: 15px; padding-top: 20px; border-top: 1px solid #eee; overflow-x: auto; }
-        .bar-container { flex: 1; display: flex; flex-direction: column; align-items: center; }
+        .bar-container { flex: 1; display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: transform 0.2s; }
+        .bar-container:hover { transform: scale(1.05); }
         .bar { width: 100%; max-width: 60px; background: linear-gradient(180deg, #667eea 0%, #764ba2 100%); border-radius: 5px 5px 0 0; transition: height 0.3s; }
         .bar-label { margin-top: 10px; font-size: 12px; color: #666; }
         .bar-value { margin-bottom: 5px; font-size: 12px; color: #333; font-weight: 500; }
@@ -499,7 +500,7 @@
                 const value = item.income || 0;
                 const height = value > 0 ? Math.max((value / maxValue) * maxBarHeight, 6) : 0;
                 return `
-                    <div class="bar-container">
+                    <div class="bar-container" onclick="filterByMonth(${index + 1})">
                         <div class="bar-value">¥${value.toFixed(0)}</div>
                         <div class="bar" style="height: ${height}px;"></div>
                         <div class="bar-label">${months[index]}</div>
@@ -508,6 +509,11 @@
             }).join('');
 
             document.getElementById('monthlyChart').innerHTML = bars;
+        }
+
+        function filterByMonth(month) {
+            document.getElementById('monthSelect').value = month;
+            loadStats();
         }
 
         function updateShopStats(shopStats, settledFilter) {
