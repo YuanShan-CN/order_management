@@ -188,24 +188,6 @@
                     </select>
                 </div>
                 <div class="filter-group">
-                    <label>月份</label>
-                    <select id="monthSelect">
-                        <option value="all">全部月份</option>
-                        <option value="1">1月</option>
-                        <option value="2">2月</option>
-                        <option value="3">3月</option>
-                        <option value="4">4月</option>
-                        <option value="5">5月</option>
-                        <option value="6">6月</option>
-                        <option value="7">7月</option>
-                        <option value="8">8月</option>
-                        <option value="9">9月</option>
-                        <option value="10">10月</option>
-                        <option value="11">11月</option>
-                        <option value="12">12月</option>
-                    </select>
-                </div>
-                <div class="filter-group">
                     <label>结算状态</label>
                     <select id="settledSelect">
                         <option value="all">全部状态</option>
@@ -345,7 +327,6 @@
             }
             
             const year = document.getElementById('yearSelect').value;
-            const month = document.getElementById('monthSelect').value;
             const settled = document.getElementById('settledSelect').value;
             const shop = document.getElementById('shopSelect').value;
             
@@ -353,8 +334,8 @@
             if (year !== 'all') {
                 url += `year=${year}&`;
             }
-            if (month !== 'all') {
-                url += `month=${month}&`;
+            if (selectedMonth) {
+                url += `month=${selectedMonth}&`;
             }
             if (settled !== 'all') {
                 url += `settled=${settled}&`;
@@ -399,11 +380,10 @@
 
         async function loadStats() {
             const year = document.getElementById('yearSelect').value;
-            const month = document.getElementById('monthSelect').value;
             const settled = document.getElementById('settledSelect').value;
             const shop = document.getElementById('shopSelect').value;
             
-            const params = { year, month, settled, shop };
+            const params = { year, settled, shop };
             const queryString = buildQueryString(params);
             
             try {
@@ -483,7 +463,6 @@
             document.getElementById('settledSelect').value = 'all';
             selectedMonth = null;
             cachedMonthlyData = null;
-            document.getElementById('monthSelect').value = 'all';
             loadStats();
         }
 
@@ -526,21 +505,17 @@
         }
 
         async function filterByMonth(month) {
-            const monthSelect = document.getElementById('monthSelect');
-            
             if (selectedMonth === month) {
                 selectedMonth = null;
-                monthSelect.value = 'all';
             } else {
                 selectedMonth = month;
-                monthSelect.value = month;
             }
             
             const year = document.getElementById('yearSelect').value;
             const settled = document.getElementById('settledSelect').value;
             const shop = document.getElementById('shopSelect').value;
             
-            const params = { year, month: monthSelect.value, settled, shop };
+            const params = { year, month: selectedMonth || 'all', settled, shop };
             const queryString = buildQueryString(params);
             
             try {
@@ -717,10 +692,9 @@
             currentPage = page;
             
             const year = document.getElementById('yearSelect').value;
-            const month = document.getElementById('monthSelect').value;
             const settled = document.getElementById('settledSelect').value;
             
-            const params = { year, month, settled, shop: shopName, page: page, size: 10 };
+            const params = { year, month: selectedMonth || 'all', settled, shop: shopName, page: page, size: 10 };
             const queryString = buildQueryString(params);
             
             try {
