@@ -37,6 +37,7 @@
         .bar-container { flex: 1; display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: transform 0.2s; }
         .bar-container:hover { transform: scale(1.05); }
         .bar { width: 100%; max-width: 60px; background: linear-gradient(180deg, #667eea 0%, #764ba2 100%); border-radius: 5px 5px 0 0; transition: height 0.3s; }
+        .bar-dimmed { background: linear-gradient(180deg, #d0d0d0 0%, #a0a0a0 100%); opacity: 0.6; }
         .bar-label { margin-top: 10px; font-size: 12px; color: #666; }
         .bar-value { margin-bottom: 5px; font-size: 12px; color: #333; font-weight: 500; }
         .table-container { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
@@ -306,6 +307,7 @@
         let currentPage = 1;
         let totalPages = 1;
         let totalOrders = 0;
+        let selectedMonth = null;
 
         function getToken() {
             return localStorage.getItem('token');
@@ -478,6 +480,8 @@
 
         function filterAll() {
             document.getElementById('settledSelect').value = 'all';
+            selectedMonth = null;
+            document.getElementById('monthSelect').value = 'all';
             loadStats();
         }
 
@@ -499,10 +503,12 @@
             const bars = monthlyData.map((item, index) => {
                 const value = item.income || 0;
                 const height = value > 0 ? Math.max((value / maxValue) * maxBarHeight, 6) : 0;
+                const isSelected = selectedMonth === index + 1;
+                const barClass = isSelected ? 'bar' : 'bar bar-dimmed';
                 return `
                     <div class="bar-container" onclick="filterByMonth(${index + 1})">
                         <div class="bar-value">¥${value.toFixed(0)}</div>
-                        <div class="bar" style="height: ${height}px;"></div>
+                        <div class="${barClass}" style="height: ${height}px;"></div>
                         <div class="bar-label">${months[index]}</div>
                     </div>
                 `;
@@ -512,7 +518,16 @@
         }
 
         function filterByMonth(month) {
-            document.getElementById('monthSelect').value = month;
+            const monthSelect = document.getElementById('monthSelect');
+            
+            if (selectedMonth === month) {
+                selectedMonth = null;
+                monthSelect.value = 'all';
+            } else {
+                selectedMonth = month;
+                monthSelect.value = month;
+            }
+            
             loadStats();
         }
 
