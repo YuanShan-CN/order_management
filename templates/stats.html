@@ -308,6 +308,7 @@
         let totalPages = 1;
         let totalOrders = 0;
         let selectedMonth = null;
+        let cachedMonthlyData = null;
 
         function getToken() {
             return localStorage.getItem('token');
@@ -481,6 +482,7 @@
         function filterAll() {
             document.getElementById('settledSelect').value = 'all';
             selectedMonth = null;
+            cachedMonthlyData = null;
             document.getElementById('monthSelect').value = 'all';
             loadStats();
         }
@@ -496,11 +498,16 @@
         }
 
         function updateMonthlyChart(monthlyData, settledFilter) {
-            const maxValue = Math.max(...monthlyData.map(d => d.income), 1);
+            if (!cachedMonthlyData) {
+                cachedMonthlyData = monthlyData;
+            }
+
+            const displayData = selectedMonth ? cachedMonthlyData : monthlyData;
+            const maxValue = Math.max(...displayData.map(d => d.income), 1);
             const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
             const maxBarHeight = 100;
 
-            const bars = monthlyData.map((item, index) => {
+            const bars = displayData.map((item, index) => {
                 const value = item.income || 0;
                 const height = value > 0 ? Math.max((value / maxValue) * maxBarHeight, 6) : 0;
                 const isSelected = selectedMonth === index + 1;
@@ -518,29 +525,56 @@
             document.getElementById('monthlyChart').innerHTML = bars;
         }
 
-        function filterByMonth(month) {
+        async function filterByMonth(month) {
+            const monthSelect = document.getElementById('monthSelect');
+            
             if (selectedMonth === month) {
                 selectedMonth = null;
+                monthSelect.value = 'all';
             } else {
                 selectedMonth = month;
+                monthSelect.value = month;
             }
             
-            updateMonthlyChartVisual();
-        }
-
-        function updateMonthlyChartVisual() {
-            const bars = document.querySelectorAll('.bar-container');
-            bars.forEach((container, index) => {
-                const bar = container.querySelector('.bar');
-                const isSelected = selectedMonth === index + 1;
-                const isFiltered = selectedMonth !== null && !isSelected;
+            const year = document.getElementById('yearSelect').value;
+            const settled = document.getElementById('settledSelect').value;
+            const shop = document.getElementById('shopSelect').value;
+            
+            const params = { year, month: monthSelect.value, settled, shop };
+            const queryString = buildQueryString(params);
+            
+            try {
+                const response = await authFetch(`${API_URL}/stats?${queryString}`);
                 
-                if (isFiltered) {
-                    bar.classList.add('bar-dimmed');
-                } else {
-                    bar.classList.remove('bar-dimmed');
+                if (!response.ok) {
+                    throw new Error('服务器返回错误');
                 }
-            });
+                
+                const stats = await response.json();
+                
+                if (stats.error) {
+                    throw new Error(stats.error);
+                }
+                
+                const summary = stats.summary || {
+                    totalOrders: 0,
+                    totalIncome: 0,
+                    settledOrders: 0,
+                    settledIncome: 0,
+                    unsettledOrders: 0,
+                    unsettledIncome: 0,
+                    unsettledDeposit: 0
+                };
+                
+                const monthly = stats.monthly || Array(12).fill(null).map((_, i) => ({ month: i + 1, income: 0 }));
+                const shops = stats.shops || [];
+                
+                updateSummary(summary, settled);
+                updateMonthlyChart(monthly, settled);
+                updateShopStats(shops, settled);
+            } catch (error) {
+                console.error('加载统计数据失败:', error);
+            }
         }
 
         function updateShopStats(shopStats, settledFilter) {
