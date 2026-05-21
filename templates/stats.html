@@ -291,6 +291,7 @@
         let totalOrders = 0;
         let selectedMonth = null;
         let cachedMonthlyData = null;
+        let cachedYear = null;
 
         function getToken() {
             return localStorage.getItem('token');
@@ -477,8 +478,11 @@
         }
 
         function updateMonthlyChart(monthlyData, settledFilter) {
-            if (!cachedMonthlyData) {
+            const year = document.getElementById('yearSelect').value;
+            
+            if (!cachedMonthlyData || cachedYear !== year) {
                 cachedMonthlyData = monthlyData;
+                cachedYear = year;
             }
 
             const displayData = selectedMonth ? cachedMonthlyData : monthlyData;
