@@ -560,6 +560,16 @@
                 updateSummary(summary, settled);
                 updateMonthlyChart(monthly, settled);
                 updateShopStats(shops, settled);
+                
+                const activeTab = document.querySelector('.tab-item.active');
+                if (activeTab) {
+                    const tabId = activeTab.id;
+                    if (tabId === 'barTab') {
+                        renderBarChart();
+                    } else if (tabId === 'pieTab') {
+                        renderPieChart();
+                    }
+                }
             } catch (error) {
                 console.error('加载统计数据失败:', error);
             }
